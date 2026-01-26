@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlparse
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
+DATABASE_URL = os.environ.get('DATABASE_URL', os.environ.get('POSTGRES_URL', ''))
 
 def get_db():
     """Get database connection"""
