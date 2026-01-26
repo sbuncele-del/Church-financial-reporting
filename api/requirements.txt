@@ -1,2 +1,2 @@
 # Vercel API requirements - minimal for standalone API
-# No external dependencies - using standard library only
+psycopg2-binary>=2.9.9

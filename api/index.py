@@ -1,19 +1,135 @@
 """
-Vercel Serverless Function - Church SOLAR API
-Simple HTTP handler first to verify Vercel works
+Vercel Serverless Function - Church SOLAR API with Neon PostgreSQL
 """
 from http.server import BaseHTTPRequestHandler
 import json
+import os
+import hashlib
+import secrets
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 
-# SOLAR Data
-SOLAR_DIMENSIONS = [
-    {"dimension": "S", "name": "Spiritual Vitality", "score": 85.5, "grade": "B+", "color": "#8B5CF6", "icon": "🙏"},
-    {"dimension": "O", "name": "Organisational Governance", "score": 78.0, "grade": "B", "color": "#3B82F6", "icon": "⚙️"},
-    {"dimension": "L", "name": "Love & Care", "score": 92.0, "grade": "A-", "color": "#EC4899", "icon": "❤️"},
-    {"dimension": "A", "name": "Advancement", "score": 70.5, "grade": "B-", "color": "#10B981", "icon": "🚀"},
-    {"dimension": "R", "name": "Resources", "score": 82.0, "grade": "B", "color": "#F59E0B", "icon": "💰"},
-]
+# PostgreSQL connection
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+def get_db():
+    """Get database connection"""
+    if not DATABASE_URL:
+        return None
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+def init_db():
+    """Initialize database tables"""
+    conn = get_db()
+    if not conn:
+        return False
+    
+    try:
+        cur = conn.cursor()
+        
+        # Users table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                role VARCHAR(50) DEFAULT 'member',
+                church_id INTEGER,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Churches table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS churches (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                city VARCHAR(100),
+                country VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # SOLAR Assessments table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS solar_assessments (
+                id SERIAL PRIMARY KEY,
+                church_id INTEGER REFERENCES churches(id),
+                assessment_period VARCHAR(50),
+                status VARCHAR(50) DEFAULT 'draft',
+                spiritual_vitality_score DECIMAL(5,2) DEFAULT 0,
+                organisational_governance_score DECIMAL(5,2) DEFAULT 0,
+                love_care_score DECIMAL(5,2) DEFAULT 0,
+                advancement_score DECIMAL(5,2) DEFAULT 0,
+                resources_score DECIMAL(5,2) DEFAULT 0,
+                overall_score DECIMAL(5,2) DEFAULT 0,
+                overall_grade VARCHAR(5),
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Members table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS members (
+                id SERIAL PRIMARY KEY,
+                church_id INTEGER REFERENCES churches(id),
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                email VARCHAR(255),
+                phone VARCHAR(50),
+                member_status VARCHAR(50) DEFAULT 'active',
+                join_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Insert default church if none exists
+        cur.execute("SELECT COUNT(*) as count FROM churches")
+        if cur.fetchone()['count'] == 0:
+            cur.execute("""
+                INSERT INTO churches (name, city, country) 
+                VALUES ('Grace Baptist Church', 'Johannesburg', 'South Africa')
+            """)
+        
+        # Insert default admin user if none exists
+        cur.execute("SELECT COUNT(*) as count FROM users")
+        if cur.fetchone()['count'] == 0:
+            password_hash = hashlib.sha256('admin123'.encode()).hexdigest()
+            cur.execute("""
+                INSERT INTO users (email, password_hash, first_name, last_name, role, church_id) 
+                VALUES ('admin@church.org', %s, 'Admin', 'User', 'admin', 1)
+            """, (password_hash,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"DB Init Error: {e}")
+        conn.rollback()
+        conn.close()
+        return False
+
+def calculate_grade(score):
+    """Calculate letter grade from score"""
+    if score >= 90: return 'A'
+    if score >= 85: return 'A-'
+    if score >= 80: return 'B+'
+    if score >= 75: return 'B'
+    if score >= 70: return 'B-'
+    if score >= 65: return 'C+'
+    if score >= 60: return 'C'
+    if score >= 55: return 'C-'
+    if score >= 50: return 'D'
+    return 'F'
 
 class handler(BaseHTTPRequestHandler):
     def send_json(self, data, status=200):
@@ -23,7 +139,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+        self.wfile.write(json.dumps(data, default=str).encode())
     
     def do_OPTIONS(self):
         self.send_response(200)
@@ -32,108 +148,358 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
 
-    def do_GET(self):
-        path = self.path.split('?')[0]
-        
-        if path in ['/', '/api', '/api/']:
-            self.send_json({"message": "Church SOLAR API", "version": "1.0.0", "status": "healthy"})
-        
-        elif path.startswith('/api/v1/solar/dashboard'):
-            overall = sum(d["score"] for d in SOLAR_DIMENSIONS) / len(SOLAR_DIMENSIONS)
-            self.send_json({
-                "church_id": 1,
-                "church_name": "Grace Baptist Church",
-                "assessment_period": "Q1 2026",
-                "overall_score": round(overall, 1),
-                "overall_grade": "B+",
-                "dimensions": SOLAR_DIMENSIONS,
-                "strengths": ["Strong spiritual vitality", "Excellent member care"],
-                "improvements": ["Digital outreach", "Youth ministry"],
-                "trend": "improving"
-            })
-        
-        elif path == '/api/v1/solar/kpis/summary':
-            self.send_json({
-                "total_kpis": 50,
-                "dimensions": {
-                    "S": {"name": "Spiritual Vitality", "kpi_count": 10, "avg_score": 85.5},
-                    "O": {"name": "Organisational Governance", "kpi_count": 10, "avg_score": 78.0},
-                    "L": {"name": "Love & Care", "kpi_count": 10, "avg_score": 92.0},
-                    "A": {"name": "Advancement", "kpi_count": 10, "avg_score": 70.5},
-                    "R": {"name": "Resources", "kpi_count": 10, "avg_score": 82.0}
-                }
-            })
-        
-        elif path == '/api/v1/solar/assessments':
-            self.send_json([{
-                "id": 1,
-                "church_id": 1,
-                "assessment_period": "Q1 2026",
-                "status": "completed",
-                "overall_score": 81.6,
-                "overall_grade": "B+",
-                "spiritual_vitality_score": 85.5,
-                "organisational_governance_score": 78.0,
-                "love_care_score": 92.0,
-                "advancement_score": 70.5,
-                "resources_score": 82.0,
-            }])
-        
-        elif path == '/api/v1/members':
-            self.send_json({
-                "members": [
-                    {"id": 1, "first_name": "John", "last_name": "Doe", "full_name": "John Doe", "email": "john@church.org", "member_status": "active"},
-                    {"id": 2, "first_name": "Mary", "last_name": "Smith", "full_name": "Mary Smith", "email": "mary@church.org", "member_status": "active"},
-                ],
-                "total": 2
-            })
-        
-        elif path == '/api/v1/finance/summary':
-            self.send_json({
-                "total_income": 125000.00,
-                "total_expenses": 98000.00,
-                "net": 27000.00,
-                "currency": "ZAR"
-            })
-        
-        else:
-            self.send_json({"error": "Not found", "path": path}, 404)
-    
-    def do_POST(self):
-        path = self.path.split('?')[0]
+    def get_body(self):
         content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length).decode() if content_length else '{}'
+        if content_length:
+            return json.loads(self.rfile.read(content_length).decode())
+        return {}
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip('/')
+        query = parse_qs(parsed.query)
+        
+        # Initialize DB on first request
+        init_db()
+        
+        conn = get_db()
+        if not conn:
+            self.send_json({"error": "Database not configured"}, 500)
+            return
         
         try:
-            data = json.loads(body)
-        except:
-            data = {}
+            cur = conn.cursor()
+            
+            # Health/Root
+            if path in ['', '/api', '/api/v1']:
+                self.send_json({"message": "Church SOLAR API", "version": "1.0.0", "status": "healthy", "database": "connected"})
+            
+            # SOLAR Dashboard
+            elif path.startswith('/api/v1/solar/dashboard'):
+                church_id = path.split('/')[-1] if path.split('/')[-1].isdigit() else '1'
+                
+                cur.execute("SELECT * FROM churches WHERE id = %s", (church_id,))
+                church = cur.fetchone()
+                
+                cur.execute("""
+                    SELECT * FROM solar_assessments 
+                    WHERE church_id = %s 
+                    ORDER BY created_at DESC LIMIT 1
+                """, (church_id,))
+                assessment = cur.fetchone()
+                
+                if assessment:
+                    dimensions = [
+                        {"dimension": "S", "name": "Spiritual Vitality", "score": float(assessment['spiritual_vitality_score'] or 0), "color": "#8B5CF6", "icon": "🙏"},
+                        {"dimension": "O", "name": "Organisational Governance", "score": float(assessment['organisational_governance_score'] or 0), "color": "#3B82F6", "icon": "⚙️"},
+                        {"dimension": "L", "name": "Love & Care", "score": float(assessment['love_care_score'] or 0), "color": "#EC4899", "icon": "❤️"},
+                        {"dimension": "A", "name": "Advancement", "score": float(assessment['advancement_score'] or 0), "color": "#10B981", "icon": "🚀"},
+                        {"dimension": "R", "name": "Resources", "score": float(assessment['resources_score'] or 0), "color": "#F59E0B", "icon": "💰"},
+                    ]
+                    for d in dimensions:
+                        d['grade'] = calculate_grade(d['score'])
+                    
+                    self.send_json({
+                        "church_id": int(church_id),
+                        "church_name": church['name'] if church else "Unknown Church",
+                        "assessment_period": assessment['assessment_period'],
+                        "overall_score": float(assessment['overall_score'] or 0),
+                        "overall_grade": assessment['overall_grade'] or calculate_grade(float(assessment['overall_score'] or 0)),
+                        "dimensions": dimensions,
+                        "strengths": ["Good spiritual foundation"],
+                        "improvements": ["Continue developing all areas"],
+                        "trend": "stable"
+                    })
+                else:
+                    # Return empty assessment structure
+                    self.send_json({
+                        "church_id": int(church_id),
+                        "church_name": church['name'] if church else "Unknown Church",
+                        "assessment_period": "Q1 2026",
+                        "overall_score": 0,
+                        "overall_grade": "N/A",
+                        "dimensions": [
+                            {"dimension": "S", "name": "Spiritual Vitality", "score": 0, "grade": "N/A", "color": "#8B5CF6", "icon": "🙏"},
+                            {"dimension": "O", "name": "Organisational Governance", "score": 0, "grade": "N/A", "color": "#3B82F6", "icon": "⚙️"},
+                            {"dimension": "L", "name": "Love & Care", "score": 0, "grade": "N/A", "color": "#EC4899", "icon": "❤️"},
+                            {"dimension": "A", "name": "Advancement", "score": 0, "grade": "N/A", "color": "#10B981", "icon": "🚀"},
+                            {"dimension": "R", "name": "Resources", "score": 0, "grade": "N/A", "color": "#F59E0B", "icon": "💰"},
+                        ],
+                        "strengths": [],
+                        "improvements": ["Create your first assessment"],
+                        "trend": "new"
+                    })
+            
+            # List Assessments
+            elif path == '/api/v1/solar/assessments':
+                church_id = query.get('church_id', ['1'])[0]
+                cur.execute("""
+                    SELECT * FROM solar_assessments 
+                    WHERE church_id = %s 
+                    ORDER BY created_at DESC
+                """, (church_id,))
+                assessments = cur.fetchall()
+                self.send_json([dict(a) for a in assessments])
+            
+            # List Members
+            elif path == '/api/v1/members':
+                church_id = query.get('church_id', ['1'])[0]
+                cur.execute("""
+                    SELECT id, first_name, last_name, email, phone, member_status,
+                           first_name || ' ' || last_name as full_name
+                    FROM members 
+                    WHERE church_id = %s
+                    ORDER BY last_name, first_name
+                """, (church_id,))
+                members = cur.fetchall()
+                self.send_json({"members": [dict(m) for m in members], "total": len(members)})
+            
+            # List Churches
+            elif path == '/api/v1/churches':
+                cur.execute("SELECT * FROM churches ORDER BY name")
+                churches = cur.fetchall()
+                self.send_json([dict(c) for c in churches])
+            
+            # Finance Summary (placeholder)
+            elif path == '/api/v1/finance/summary':
+                self.send_json({
+                    "total_income": 0,
+                    "total_expenses": 0,
+                    "net": 0,
+                    "currency": "ZAR",
+                    "message": "Finance module coming soon"
+                })
+            
+            else:
+                self.send_json({"error": "Not found", "path": path}, 404)
+            
+            cur.close()
+            conn.close()
+            
+        except Exception as e:
+            self.send_json({"error": str(e)}, 500)
+            if conn:
+                conn.close()
+    
+    def do_POST(self):
+        path = self.path.split('?')[0].rstrip('/')
+        data = self.get_body()
         
-        if path == '/api/v1/auth/login':
-            self.send_json({
-                "access_token": f"jwt_token_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-                "refresh_token": "refresh_token",
-                "token_type": "bearer",
-                "user": {
-                    "id": 1,
-                    "email": data.get("email", "user@church.org"),
-                    "first_name": "Demo",
-                    "last_name": "User",
-                    "role": "admin",
-                    "church_id": 1,
-                    "is_active": True
-                }
-            })
+        init_db()
+        conn = get_db()
+        if not conn:
+            self.send_json({"error": "Database not configured"}, 500)
+            return
         
-        elif path == '/api/v1/auth/register':
-            self.send_json({
-                "id": 1,
-                "email": data.get("email", "new@church.org"),
-                "first_name": data.get("first_name", "New"),
-                "last_name": data.get("last_name", "User"),
-                "role": "member",
-                "is_active": True
-            })
+        try:
+            cur = conn.cursor()
+            
+            # Login
+            if path == '/api/v1/auth/login':
+                email = data.get('email', '')
+                password = data.get('password', '')
+                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                
+                cur.execute("""
+                    SELECT id, email, first_name, last_name, role, church_id, is_active
+                    FROM users WHERE email = %s AND password_hash = %s
+                """, (email, password_hash))
+                user = cur.fetchone()
+                
+                if user:
+                    token = secrets.token_hex(32)
+                    self.send_json({
+                        "access_token": token,
+                        "refresh_token": secrets.token_hex(32),
+                        "token_type": "bearer",
+                        "user": dict(user)
+                    })
+                else:
+                    # Demo mode: accept any login
+                    self.send_json({
+                        "access_token": secrets.token_hex(32),
+                        "refresh_token": secrets.token_hex(32),
+                        "token_type": "bearer",
+                        "user": {
+                            "id": 1,
+                            "email": email,
+                            "first_name": "Demo",
+                            "last_name": "User",
+                            "role": "admin",
+                            "church_id": 1,
+                            "is_active": True
+                        }
+                    })
+            
+            # Register
+            elif path == '/api/v1/auth/register':
+                email = data.get('email', '')
+                password = data.get('password', 'password123')
+                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                
+                cur.execute("""
+                    INSERT INTO users (email, password_hash, first_name, last_name, church_id)
+                    VALUES (%s, %s, %s, %s, 1)
+                    RETURNING id, email, first_name, last_name, role, church_id, is_active
+                """, (email, password_hash, data.get('first_name', ''), data.get('last_name', '')))
+                user = cur.fetchone()
+                conn.commit()
+                self.send_json(dict(user))
+            
+            # Create Assessment
+            elif path == '/api/v1/solar/assessments':
+                church_id = data.get('church_id', 1)
+                period = data.get('assessment_period', 'Q1 2026')
+                
+                cur.execute("""
+                    INSERT INTO solar_assessments (church_id, assessment_period, status)
+                    VALUES (%s, %s, 'draft')
+                    RETURNING *
+                """, (church_id, period))
+                assessment = cur.fetchone()
+                conn.commit()
+                self.send_json(dict(assessment))
+            
+            # Create Member
+            elif path == '/api/v1/members':
+                cur.execute("""
+                    INSERT INTO members (church_id, first_name, last_name, email, phone, member_status)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                """, (
+                    data.get('church_id', 1),
+                    data.get('first_name', ''),
+                    data.get('last_name', ''),
+                    data.get('email'),
+                    data.get('phone'),
+                    data.get('member_status', 'active')
+                ))
+                member = cur.fetchone()
+                conn.commit()
+                self.send_json(dict(member))
+            
+            # Create Church
+            elif path == '/api/v1/churches':
+                cur.execute("""
+                    INSERT INTO churches (name, city, country)
+                    VALUES (%s, %s, %s)
+                    RETURNING *
+                """, (data.get('name', ''), data.get('city', ''), data.get('country', '')))
+                church = cur.fetchone()
+                conn.commit()
+                self.send_json(dict(church))
+            
+            else:
+                self.send_json({"error": "Not found", "path": path}, 404)
+            
+            cur.close()
+            conn.close()
+            
+        except Exception as e:
+            self.send_json({"error": str(e)}, 500)
+            if conn:
+                conn.rollback()
+                conn.close()
+    
+    def do_PUT(self):
+        path = self.path.split('?')[0].rstrip('/')
+        data = self.get_body()
         
-        else:
-            self.send_json({"message": "Endpoint not implemented", "path": path}, 404)
+        conn = get_db()
+        if not conn:
+            self.send_json({"error": "Database not configured"}, 500)
+            return
+        
+        try:
+            cur = conn.cursor()
+            
+            # Update Assessment Scores
+            if '/api/v1/solar/assessments/' in path and '/scores' in path:
+                assessment_id = path.split('/')[-2]
+                
+                # Calculate overall score
+                scores = [
+                    float(data.get('spiritual_vitality_score', 0)),
+                    float(data.get('organisational_governance_score', 0)),
+                    float(data.get('love_care_score', 0)),
+                    float(data.get('advancement_score', 0)),
+                    float(data.get('resources_score', 0))
+                ]
+                overall = sum(scores) / len(scores) if scores else 0
+                grade = calculate_grade(overall)
+                
+                cur.execute("""
+                    UPDATE solar_assessments SET
+                        spiritual_vitality_score = %s,
+                        organisational_governance_score = %s,
+                        love_care_score = %s,
+                        advancement_score = %s,
+                        resources_score = %s,
+                        overall_score = %s,
+                        overall_grade = %s,
+                        status = 'completed',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    RETURNING *
+                """, (
+                    data.get('spiritual_vitality_score', 0),
+                    data.get('organisational_governance_score', 0),
+                    data.get('love_care_score', 0),
+                    data.get('advancement_score', 0),
+                    data.get('resources_score', 0),
+                    overall,
+                    grade,
+                    assessment_id
+                ))
+                assessment = cur.fetchone()
+                conn.commit()
+                self.send_json(dict(assessment) if assessment else {"error": "Not found"})
+            
+            else:
+                self.send_json({"error": "Not found", "path": path}, 404)
+            
+            cur.close()
+            conn.close()
+            
+        except Exception as e:
+            self.send_json({"error": str(e)}, 500)
+            if conn:
+                conn.rollback()
+                conn.close()
+    
+    def do_DELETE(self):
+        path = self.path.split('?')[0].rstrip('/')
+        
+        conn = get_db()
+        if not conn:
+            self.send_json({"error": "Database not configured"}, 500)
+            return
+        
+        try:
+            cur = conn.cursor()
+            
+            # Delete Member
+            if '/api/v1/members/' in path:
+                member_id = path.split('/')[-1]
+                cur.execute("DELETE FROM members WHERE id = %s", (member_id,))
+                conn.commit()
+                self.send_json({"message": "Deleted"})
+            
+            # Delete Assessment
+            elif '/api/v1/solar/assessments/' in path:
+                assessment_id = path.split('/')[-1]
+                cur.execute("DELETE FROM solar_assessments WHERE id = %s", (assessment_id,))
+                conn.commit()
+                self.send_json({"message": "Deleted"})
+            
+            else:
+                self.send_json({"error": "Not found", "path": path}, 404)
+            
+            cur.close()
+            conn.close()
+            
+        except Exception as e:
+            self.send_json({"error": str(e)}, 500)
+            if conn:
+                conn.rollback()
+                conn.close()
