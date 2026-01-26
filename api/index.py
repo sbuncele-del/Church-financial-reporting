@@ -288,10 +288,11 @@ class handler(BaseHTTPRequestHandler):
                 end_date = query.get('end_date', ['2026-01-31'])[0]
                 
                 self.send_json({
-                    "report_type": "income_statement",
+                    "report_type": "Income Statement",
+                    "generated_at": datetime.now().isoformat(),
                     "period": {
-                        "start_date": start_date,
-                        "end_date": end_date
+                        "start": start_date,
+                        "end": end_date
                     },
                     "currency": "ZAR",
                     "income": {
@@ -347,8 +348,9 @@ class handler(BaseHTTPRequestHandler):
                     })
                 
                 self.send_json({
-                    "report_type": "monthly_comparison",
+                    "report_type": "Monthly Comparison",
                     "year": year,
+                    "generated_at": datetime.now().isoformat(),
                     "currency": "ZAR",
                     "months": months,
                     "totals": {
