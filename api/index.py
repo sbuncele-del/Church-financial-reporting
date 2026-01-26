@@ -1,5 +1,6 @@
 """
 Vercel Serverless Function - Church SOLAR API with Neon PostgreSQL
+Version: 2.1.0 - Added Reports with generated_at
 """
 from http.server import BaseHTTPRequestHandler
 import json
