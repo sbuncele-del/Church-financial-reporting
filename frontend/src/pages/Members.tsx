@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { PlusIcon, TrashIcon, PencilIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { memberService } from '../services/memberService';
-import type { Member } from '../types';
+import type { Member, MemberStatus } from '../types';
 
 interface MemberFormData {
   first_name: string;
@@ -18,7 +18,7 @@ interface MemberFormData {
   city?: string;
   state?: string;
   postal_code?: string;
-  member_status?: 'active' | 'inactive' | 'visitor';
+  member_status?: MemberStatus;
   membership_date?: string;
 }
 

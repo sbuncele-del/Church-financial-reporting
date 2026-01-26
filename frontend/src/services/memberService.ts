@@ -1,5 +1,5 @@
 import api from './api';
-import type { Member, MemberSummary } from '../types';
+import type { Member, MemberSummary, MemberStatus } from '../types';
 
 interface MemberListResponse {
   members: Member[];
@@ -22,7 +22,7 @@ interface MemberCreate {
   state?: string;
   postal_code?: string;
   country?: string;
-  member_status?: 'active' | 'inactive' | 'visitor';
+  member_status?: MemberStatus;
   membership_date?: string;
 }
 

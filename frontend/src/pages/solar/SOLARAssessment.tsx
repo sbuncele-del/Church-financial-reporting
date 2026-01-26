@@ -74,7 +74,7 @@ export default function SOLARAssessment() {
   const [assessments, setAssessments] = useState<Record<SOLARDimension, DimensionAssessmentState>>(
     initializeAssessments()
   );
-  const [assessmentPeriod, setAssessmentPeriod] = useState('Q1 2026');
+  const [assessmentPeriod] = useState('Q1 2026');
 
   function initializeAssessments(): Record<SOLARDimension, DimensionAssessmentState> {
     const initial: Record<string, DimensionAssessmentState> = {};
