@@ -1,25 +1,23 @@
 """
-Vercel Serverless Function - Minimal Test
+Vercel Serverless Function - HTTP Handler
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from http.server import BaseHTTPRequestHandler
+import json
 
-app = FastAPI(title="Church SOLAR API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/api")
-async def root():
-    return {"message": "API is working!"}
-
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
-
-handler = app
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        response = {"status": "ok", "path": self.path}
+        self.wfile.write(json.dumps(response).encode())
+        return
+    
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
+        return
