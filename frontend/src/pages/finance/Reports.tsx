@@ -231,12 +231,16 @@ export default function ReportsPage() {
                   <p className="text-sm text-gray-500">
                     {reportData.period?.start && reportData.period?.end
                       ? `${reportData.period.start} to ${reportData.period.end}`
+                      : reportData.period?.start_date && reportData.period?.end_date
+                      ? `${reportData.period.start_date} to ${reportData.period.end_date}`
                       : `Year ${reportData.year}`}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400">
-                  Generated: {format(new Date(reportData.generated_at), 'PPp')}
-                </span>
+                {reportData.generated_at && (
+                  <span className="text-xs text-gray-400">
+                    Generated: {format(new Date(reportData.generated_at), 'PPp')}
+                  </span>
+                )}
               </div>
 
               {/* Income Statement Report */}
