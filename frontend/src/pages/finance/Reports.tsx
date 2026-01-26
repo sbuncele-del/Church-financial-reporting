@@ -8,6 +8,7 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { reportsService } from '../../services/financeService';
+import { formatCurrency } from '../../utils/currency';
 
 type ReportType = 'income-statement' | 'monthly-comparison' | 'donor-statement';
 
@@ -72,13 +73,6 @@ export default function ReportsPage() {
     } catch (error) {
       toast.error('Failed to export');
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   const setQuickDate = (period: 'thisMonth' | 'lastMonth' | 'thisYear') => {

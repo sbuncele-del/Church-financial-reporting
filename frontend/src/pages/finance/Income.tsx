@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { financeService } from '../../services/financeService';
 import { memberService } from '../../services/memberService';
+import { formatCurrency } from '../../utils/currency';
 import type { Income, IncomeCategory, MemberSummary, IncomeCreate } from '../../types';
 
 export default function IncomePage() {
@@ -91,13 +92,6 @@ export default function IncomePage() {
     });
     setEditingId(null);
     setShowModal(true);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   if (loading) {

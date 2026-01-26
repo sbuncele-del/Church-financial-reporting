@@ -111,7 +111,8 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="label">Currency</label>
-              <select className="input" defaultValue="USD" disabled>
+              <select className="input" defaultValue="ZAR" disabled>
+                <option value="ZAR">ZAR - South African Rand</option>
                 <option value="USD">USD - US Dollar</option>
                 <option value="EUR">EUR - Euro</option>
                 <option value="GBP">GBP - British Pound</option>

@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { financeService } from '../../services/financeService';
+import { formatCurrency } from '../../utils/currency';
 import type { Expense, ExpenseCategory, ExpenseCreate } from '../../types';
 
 export default function ExpensesPage() {
@@ -87,13 +88,6 @@ export default function ExpensesPage() {
     });
     setEditingId(null);
     setShowModal(true);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   if (loading) {

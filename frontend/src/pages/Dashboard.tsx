@@ -8,6 +8,7 @@ import {
   UsersIcon,
 } from '@heroicons/react/24/outline';
 import { financeService } from '../services/financeService';
+import { formatCurrency } from '../utils/currency';
 import type { FinancialSummary } from '../types';
 
 // Chart components
@@ -56,18 +57,11 @@ export default function Dashboard() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
   // Stats cards data
   const stats = [
     {
       name: 'Total Income',
-      value: summary ? formatCurrency(summary.total_income) : '$0.00',
+      value: summary ? formatCurrency(summary.total_income) : 'R0.00',
       change: '+12.5%',
       changeType: 'positive',
       icon: ArrowTrendingUpIcon,
@@ -75,7 +69,7 @@ export default function Dashboard() {
     },
     {
       name: 'Total Expenses',
-      value: summary ? formatCurrency(summary.total_expenses) : '$0.00',
+      value: summary ? formatCurrency(summary.total_expenses) : 'R0.00',
       change: '+5.2%',
       changeType: 'negative',
       icon: ArrowTrendingDownIcon,
@@ -83,7 +77,7 @@ export default function Dashboard() {
     },
     {
       name: 'Net Balance',
-      value: summary ? formatCurrency(summary.net_balance) : '$0.00',
+      value: summary ? formatCurrency(summary.net_balance) : 'R0.00',
       change: '+8.1%',
       changeType: summary && summary.net_balance >= 0 ? 'positive' : 'negative',
       icon: BanknotesIcon,
