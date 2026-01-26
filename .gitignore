@@ -76,3 +76,4 @@ celerybeat.pid
 # Local development
 .devcontainer.json.backup
 .vercel
+.env*.local
