@@ -360,10 +360,13 @@ class handler(BaseHTTPRequestHandler):
                     }
                 })
             
-            # Reports - Export Transactions (returns empty for now)
+            # Reports - Export Transactions (returns CSV)
             elif path == '/api/v1/reports/export/transactions':
-                # Return CSV-like response
-                self.send_headers(200, "text/csv")
+                self.send_response(200)
+                self.send_header('Content-type', 'text/csv')
+                self.send_header('Content-Disposition', 'attachment; filename="transactions.csv"')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
                 csv_content = "Date,Type,Category,Description,Amount\n"
                 csv_content += "2026-01-05,Income,Tithes,Sunday Service Collection,8000.00\n"
                 csv_content += "2026-01-12,Income,Offerings,Sunday Offering,3000.00\n"
