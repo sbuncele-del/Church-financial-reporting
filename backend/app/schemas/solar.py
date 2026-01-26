@@ -106,8 +106,8 @@ class DimensionAssessmentResponse(BaseModel):
     id: int
     dimension: SOLARDimensionEnum
     score: float
-    grade: str
-    sub_dimension_scores: Dict[str, float]
+    grade: Optional[str] = None
+    sub_dimension_scores: Optional[Dict[str, float]] = None
     vivid_image: Optional[str] = None
     current_state: Optional[str] = None
     desired_state: Optional[str] = None

@@ -86,11 +86,13 @@ def decode_token(token: str) -> Optional[TokenData]:
             settings.SECRET_KEY, 
             algorithms=[settings.ALGORITHM]
         )
-        user_id: int = payload.get("sub")
+        user_id_str = payload.get("sub")
         email: str = payload.get("email")
         role: str = payload.get("role")
-        if user_id is None:
+        if user_id_str is None:
             return None
+        # Convert sub back to int (JWT requires sub to be string)
+        user_id = int(user_id_str)
         return TokenData(user_id=user_id, email=email, role=role)
     except JWTError:
         return None
@@ -98,7 +100,8 @@ def decode_token(token: str) -> Optional[TokenData]:
 
 def create_tokens(user_id: int, email: str, role: str) -> Token:
     """Create both access and refresh tokens for a user."""
-    token_data = {"sub": user_id, "email": email, "role": role}
+    # JWT spec requires 'sub' to be a string
+    token_data = {"sub": str(user_id), "email": email, "role": role}
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     return Token(access_token=access_token, refresh_token=refresh_token)

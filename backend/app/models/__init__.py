@@ -14,6 +14,16 @@ from app.models.finance import (
     BudgetItem,
     FinancialAccount
 )
+from app.models.solar import (
+    SOLARAssessment,
+    DimensionAssessment,
+    KPIDefinition,
+    KPIScore,
+    SOLARGoal,
+    SOLARBenchmark,
+    SOLARDimension,
+    AssessmentStatus,
+)
 
 __all__ = [
     "User",
@@ -26,5 +36,13 @@ __all__ = [
     "Expense",
     "Budget",
     "BudgetItem",
-    "FinancialAccount"
+    "FinancialAccount",
+    "SOLARAssessment",
+    "DimensionAssessment",
+    "KPIDefinition",
+    "KPIScore",
+    "SOLARGoal",
+    "SOLARBenchmark",
+    "SOLARDimension",
+    "AssessmentStatus",
 ]

@@ -52,6 +52,8 @@ class Church(Base):
     expenses = relationship("Expense", back_populates="church")
     budgets = relationship("Budget", back_populates="church")
     accounts = relationship("FinancialAccount", back_populates="church")
+    solar_assessments = relationship("SOLARAssessment", back_populates="church")
+    solar_goals = relationship("SOLARGoal", back_populates="church")
     
     @property
     def full_address(self) -> str:
