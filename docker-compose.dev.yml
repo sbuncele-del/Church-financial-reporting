@@ -1,0 +1,44 @@
+# Docker Compose for local development
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: church-db-dev
+    environment:
+      POSTGRES_USER: churchms
+      POSTGRES_PASSWORD: churchms_dev
+      POSTGRES_DB: churchms_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U churchms"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend (development mode)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: church-backend-dev
+    environment:
+      - DATABASE_URL=postgresql://churchms:churchms_dev@db:5432/churchms_dev
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - DEBUG=True
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_dev_data:

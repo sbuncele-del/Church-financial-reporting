@@ -1,0 +1,595 @@
+"""
+SOLAR Framework API Routes
+
+This module provides API endpoints for:
+- SOLAR Assessments (create, read, update)
+- KPI Management
+- Dashboard data
+- Goals and tracking
+- Reports
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from datetime import datetime
+
+from app.core.database import get_db
+from app.schemas.solar import (
+    SOLARAssessmentCreate,
+    SOLARAssessmentUpdate,
+    SOLARAssessmentResponse,
+    SOLARAssessmentSummary,
+    SOLARScoresUpdate,
+    DimensionAssessmentCreate,
+    DimensionAssessmentResponse,
+    KPIDefinitionResponse,
+    KPIScoreCreate,
+    KPIScoreResponse,
+    SOLARDashboard,
+    SOLARRadarData,
+    SOLARGoalCreate,
+    SOLARGoalUpdate,
+    SOLARGoalResponse,
+    ProgramAssessmentCreate,
+    ProgramAssessmentResponse,
+    SOLARReportRequest,
+    SOLARDimensionEnum,
+    DimensionScore,
+)
+from app.models.solar_kpis import SOLAR_KPI_DEFINITIONS, get_dimension_summary, get_all_kpi_definitions
+
+router = APIRouter(prefix="/solar", tags=["SOLAR Framework"])
+
+
+# ============================================================================
+# SOLAR Assessment Endpoints
+# ============================================================================
+
+@router.post("/assessments", response_model=SOLARAssessmentResponse)
+async def create_assessment(
+    assessment: SOLARAssessmentCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new SOLAR assessment for a church.
+    This initializes all 5 dimension assessments.
+    """
+    # TODO: Implement database creation
+    # For now, return a mock response
+    return {
+        "id": 1,
+        "church_id": assessment.church_id,
+        "assessment_date": datetime.utcnow(),
+        "assessment_period": assessment.assessment_period,
+        "status": "draft",
+        "overall_score": 0.0,
+        "overall_grade": None,
+        "spiritual_vitality_score": 0.0,
+        "organisational_governance_score": 0.0,
+        "love_care_score": 0.0,
+        "advancement_score": 0.0,
+        "resources_score": 0.0,
+        "executive_summary": None,
+        "strengths": [],
+        "areas_for_improvement": [],
+        "recommendations": [],
+        "dimension_assessments": [],
+        "kpi_scores": [],
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    }
+
+
+@router.get("/assessments", response_model=List[SOLARAssessmentSummary])
+async def list_assessments(
+    church_id: int,
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db)
+):
+    """
+    List all SOLAR assessments for a church.
+    """
+    # TODO: Implement database query
+    return []
+
+
+@router.get("/assessments/{assessment_id}", response_model=SOLARAssessmentResponse)
+async def get_assessment(
+    assessment_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get a specific SOLAR assessment with all details.
+    """
+    # TODO: Implement database query
+    raise HTTPException(status_code=404, detail="Assessment not found")
+
+
+@router.put("/assessments/{assessment_id}", response_model=SOLARAssessmentResponse)
+async def update_assessment(
+    assessment_id: int,
+    update_data: SOLARAssessmentUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update a SOLAR assessment (status, summary, recommendations).
+    """
+    # TODO: Implement database update
+    raise HTTPException(status_code=404, detail="Assessment not found")
+
+
+@router.put("/assessments/{assessment_id}/scores", response_model=SOLARAssessmentResponse)
+async def update_assessment_scores(
+    assessment_id: int,
+    scores: SOLARScoresUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update dimension scores for a SOLAR assessment.
+    Automatically recalculates overall score and grade.
+    """
+    # TODO: Implement score update and recalculation
+    raise HTTPException(status_code=404, detail="Assessment not found")
+
+
+# ============================================================================
+# Dimension Assessment Endpoints
+# ============================================================================
+
+@router.post("/assessments/{assessment_id}/dimensions", response_model=DimensionAssessmentResponse)
+async def create_dimension_assessment(
+    assessment_id: int,
+    dimension_data: DimensionAssessmentCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Add or update a dimension assessment within a SOLAR assessment.
+    """
+    # Calculate dimension score from sub-dimension scores
+    sub_scores = dimension_data.sub_dimension_scores
+    if sub_scores:
+        avg_score = sum(sub_scores.values()) / len(sub_scores)
+    else:
+        avg_score = 0.0
+    
+    # Calculate grade
+    grade = calculate_grade(avg_score)
+    
+    return {
+        "id": 1,
+        "dimension": dimension_data.dimension,
+        "score": avg_score,
+        "grade": grade,
+        "sub_dimension_scores": sub_scores,
+        "vivid_image": dimension_data.vivid_image,
+        "current_state": dimension_data.current_state,
+        "desired_state": dimension_data.desired_state,
+        "gap_analysis": dimension_data.gap_analysis,
+        "focus_programs": dimension_data.focus_programs,
+        "observations": dimension_data.observations,
+        "action_items": dimension_data.action_items,
+    }
+
+
+@router.get("/assessments/{assessment_id}/dimensions/{dimension}", response_model=DimensionAssessmentResponse)
+async def get_dimension_assessment(
+    assessment_id: int,
+    dimension: SOLARDimensionEnum,
+    db: Session = Depends(get_db)
+):
+    """
+    Get a specific dimension assessment.
+    """
+    raise HTTPException(status_code=404, detail="Dimension assessment not found")
+
+
+# ============================================================================
+# KPI Endpoints
+# ============================================================================
+
+@router.get("/kpis", response_model=List[KPIDefinitionResponse])
+async def list_kpi_definitions(
+    dimension: Optional[SOLARDimensionEnum] = None,
+    sub_dimension: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    List all KPI definitions, optionally filtered by dimension.
+    """
+    all_kpis = get_all_kpi_definitions()
+    
+    # Filter by dimension if specified
+    if dimension:
+        all_kpis = [k for k in all_kpis if k["dimension"] == dimension.value]
+    
+    # Filter by sub_dimension if specified
+    if sub_dimension:
+        all_kpis = [k for k in all_kpis if k["sub_dimension"] == sub_dimension]
+    
+    # Add mock IDs for response
+    for i, kpi in enumerate(all_kpis, 1):
+        kpi["id"] = i
+        kpi["is_active"] = True
+        kpi["dimension"] = SOLARDimensionEnum(kpi["dimension"])
+    
+    return all_kpis
+
+
+@router.get("/kpis/summary")
+async def get_kpi_summary():
+    """
+    Get a summary of KPIs grouped by dimension.
+    """
+    return get_dimension_summary()
+
+
+@router.post("/assessments/{assessment_id}/kpi-scores", response_model=KPIScoreResponse)
+async def record_kpi_score(
+    assessment_id: int,
+    score_data: KPIScoreCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Record a KPI score for an assessment.
+    """
+    # TODO: Implement KPI score recording
+    # Calculate normalized score based on thresholds
+    # Determine grade
+    # Track trend from previous value
+    
+    return {
+        "id": 1,
+        "kpi_definition_id": score_data.kpi_definition_id,
+        "actual_value": score_data.actual_value,
+        "score": 75.0,  # Mock normalized score
+        "grade": "B+",
+        "previous_value": None,
+        "change_percentage": None,
+        "trend": None,
+        "notes": score_data.notes,
+        "recorded_at": datetime.utcnow(),
+        "kpi_code": "S-TW-001",
+        "kpi_name": "Worship Attendance Rate",
+    }
+
+
+@router.get("/assessments/{assessment_id}/kpi-scores", response_model=List[KPIScoreResponse])
+async def list_kpi_scores(
+    assessment_id: int,
+    dimension: Optional[SOLARDimensionEnum] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    List all KPI scores for an assessment.
+    """
+    return []
+
+
+# ============================================================================
+# Dashboard Endpoints
+# ============================================================================
+
+@router.get("/dashboard/{church_id}", response_model=SOLARDashboard)
+async def get_solar_dashboard(
+    church_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get SOLAR dashboard data for a church.
+    Returns the latest assessment with visualization-ready data.
+    """
+    dim_summary = get_dimension_summary()
+    
+    # Mock data for demonstration
+    dimensions = []
+    for key, data in dim_summary.items():
+        dimensions.append(DimensionScore(
+            dimension=SOLARDimensionEnum(key),
+            name=data["name"],
+            score=72.5,  # Mock score
+            grade="B",
+            icon=data["icon"],
+            color=data["color"],
+            trend="improving",
+            change=3.5
+        ))
+    
+    return {
+        "church_id": church_id,
+        "church_name": "Sample Church",
+        "assessment_period": "Q1 2026",
+        "assessment_date": datetime.utcnow(),
+        "overall_score": 72.5,
+        "overall_grade": "B",
+        "dimensions": dimensions,
+        "trend_data": [],
+        "top_strengths": ["Strong worship culture", "Active family groups"],
+        "priority_improvements": ["Digital presence", "Investment strategy"],
+        "benchmark_comparison": {
+            "S": 70.0,
+            "O": 68.0,
+            "L": 75.0,
+            "A": 65.0,
+            "R": 72.0
+        }
+    }
+
+
+@router.get("/dashboard/{church_id}/radar", response_model=SOLARRadarData)
+async def get_radar_chart_data(
+    church_id: int,
+    assessment_id: Optional[int] = None,
+    compare_to: Optional[int] = None,  # Previous assessment ID
+    include_benchmark: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Get data formatted for radar chart visualization.
+    """
+    return {
+        "labels": ["Spiritual Vitality", "Organisational", "Love & Care", "Advancement", "Resources"],
+        "current_scores": [78.0, 72.0, 80.0, 65.0, 70.0],
+        "previous_scores": [75.0, 70.0, 78.0, 60.0, 68.0] if compare_to else None,
+        "benchmark_scores": [70.0, 68.0, 75.0, 65.0, 72.0] if include_benchmark else None,
+        "target_scores": [85.0, 80.0, 85.0, 80.0, 80.0]
+    }
+
+
+# ============================================================================
+# Goals Endpoints
+# ============================================================================
+
+@router.post("/goals", response_model=SOLARGoalResponse)
+async def create_goal(
+    goal: SOLARGoalCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a SOLAR improvement goal.
+    """
+    return {
+        "id": 1,
+        "church_id": goal.church_id,
+        "title": goal.title,
+        "description": goal.description,
+        "dimension": goal.dimension,
+        "sub_dimension": goal.sub_dimension,
+        "target_score": goal.target_score,
+        "baseline_score": goal.baseline_score,
+        "current_score": goal.baseline_score,
+        "start_date": datetime.utcnow(),
+        "target_date": goal.target_date,
+        "completed_date": None,
+        "status": "active",
+        "progress_percentage": 0.0,
+        "milestones": goal.milestones,
+        "action_plan": goal.action_plan,
+    }
+
+
+@router.get("/goals", response_model=List[SOLARGoalResponse])
+async def list_goals(
+    church_id: int,
+    dimension: Optional[SOLARDimensionEnum] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    List all SOLAR goals for a church.
+    """
+    return []
+
+
+@router.put("/goals/{goal_id}", response_model=SOLARGoalResponse)
+async def update_goal(
+    goal_id: int,
+    update_data: SOLARGoalUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update a SOLAR goal's progress.
+    """
+    raise HTTPException(status_code=404, detail="Goal not found")
+
+
+# ============================================================================
+# Program Assessment Endpoints
+# ============================================================================
+
+@router.post("/assessments/{assessment_id}/programs", response_model=ProgramAssessmentResponse)
+async def create_program_assessment(
+    assessment_id: int,
+    program: ProgramAssessmentCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Add a program assessment to a SOLAR assessment.
+    """
+    # Calculate overall score
+    overall_score = (
+        program.spiritual_impact_score +
+        program.participation_quality_score +
+        program.transformation_evidence_score +
+        program.team_preparedness_score
+    ) / 4
+    
+    return {
+        "id": 1,
+        "program_name": program.program_name,
+        "program_description": program.program_description,
+        "dimension": program.dimension,
+        "spiritual_impact_score": program.spiritual_impact_score,
+        "participation_quality_score": program.participation_quality_score,
+        "transformation_evidence_score": program.transformation_evidence_score,
+        "team_preparedness_score": program.team_preparedness_score,
+        "overall_score": overall_score,
+        "excellence_definition": program.excellence_definition,
+        "current_state": program.current_state,
+        "barriers": program.barriers,
+        "motivators": program.motivators,
+        "enhancement_areas": program.enhancement_areas,
+        "specific_actions": program.specific_actions,
+        "success_measures": program.success_measures,
+        "is_priority": program.is_priority,
+        "priority_rank": program.priority_rank,
+    }
+
+
+@router.get("/assessments/{assessment_id}/programs", response_model=List[ProgramAssessmentResponse])
+async def list_program_assessments(
+    assessment_id: int,
+    dimension: Optional[SOLARDimensionEnum] = None,
+    priority_only: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    List all program assessments for a SOLAR assessment.
+    """
+    return []
+
+
+# ============================================================================
+# Reports Endpoints
+# ============================================================================
+
+@router.post("/reports/generate")
+async def generate_solar_report(
+    report_request: SOLARReportRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a comprehensive SOLAR report.
+    Returns report data that can be rendered as PDF/Excel.
+    """
+    dim_summary = get_dimension_summary()
+    
+    return {
+        "report_type": report_request.report_type,
+        "generated_at": datetime.utcnow(),
+        "church_id": report_request.church_id,
+        "dimensions": dim_summary,
+        "overall_score": 72.5,
+        "overall_grade": "B",
+        "dimension_scores": {
+            "S": {"score": 78.0, "grade": "B+", "name": "Spiritual Vitality"},
+            "O": {"score": 72.0, "grade": "B", "name": "Organisational Governance"},
+            "L": {"score": 80.0, "grade": "B+", "name": "Love & Care"},
+            "A": {"score": 65.0, "grade": "C+", "name": "Advancement"},
+            "R": {"score": 70.0, "grade": "B-", "name": "Resources"},
+        },
+        "executive_summary": "The church demonstrates strong spiritual health with excellent worship experiences. Areas for growth include digital outreach and investment strategy development.",
+        "strengths": [
+            "Transformational worship services with high engagement",
+            "Strong family group system with good participation",
+            "Healthy organizational culture",
+        ],
+        "areas_for_improvement": [
+            "Digital mission and media influence needs development",
+            "Investment strategy for sustainable financing",
+            "New believer integration could be enhanced",
+        ],
+        "recommendations": [
+            {
+                "priority": 1,
+                "dimension": "A",
+                "area": "Digital Mission",
+                "action": "Develop comprehensive social media strategy",
+                "timeline": "90 days",
+            },
+            {
+                "priority": 2,
+                "dimension": "R",
+                "area": "Investment Strategy",
+                "action": "Form investment committee and develop policy",
+                "timeline": "60 days",
+            },
+        ],
+    }
+
+
+@router.get("/reports/trend/{church_id}")
+async def get_trend_report(
+    church_id: int,
+    periods: int = Query(4, ge=1, le=12),
+    db: Session = Depends(get_db)
+):
+    """
+    Get trend data for SOLAR assessments over time.
+    """
+    return {
+        "church_id": church_id,
+        "periods": ["Q2 2025", "Q3 2025", "Q4 2025", "Q1 2026"],
+        "overall_scores": [68.0, 70.5, 71.0, 72.5],
+        "dimension_trends": {
+            "S": [72.0, 74.0, 76.0, 78.0],
+            "O": [68.0, 70.0, 71.0, 72.0],
+            "L": [75.0, 77.0, 78.0, 80.0],
+            "A": [58.0, 60.0, 62.0, 65.0],
+            "R": [65.0, 66.0, 68.0, 70.0],
+        },
+        "analysis": {
+            "best_improvement": {"dimension": "S", "improvement": 6.0},
+            "needs_attention": {"dimension": "A", "reason": "Slowest growth"},
+            "overall_trend": "improving",
+        }
+    }
+
+
+# ============================================================================
+# Utility Functions
+# ============================================================================
+
+def calculate_grade(score: float) -> str:
+    """Calculate letter grade from numeric score."""
+    if score >= 97:
+        return "A+"
+    elif score >= 93:
+        return "A"
+    elif score >= 90:
+        return "A-"
+    elif score >= 87:
+        return "B+"
+    elif score >= 83:
+        return "B"
+    elif score >= 80:
+        return "B-"
+    elif score >= 77:
+        return "C+"
+    elif score >= 73:
+        return "C"
+    elif score >= 70:
+        return "C-"
+    elif score >= 67:
+        return "D+"
+    elif score >= 63:
+        return "D"
+    elif score >= 60:
+        return "D-"
+    else:
+        return "F"
+
+
+def calculate_overall_score(
+    s_score: float,
+    o_score: float,
+    l_score: float,
+    a_score: float,
+    r_score: float,
+    weights: dict = None
+) -> float:
+    """
+    Calculate weighted overall SOLAR score.
+    Default weights are equal (20% each).
+    """
+    if weights is None:
+        weights = {"S": 0.2, "O": 0.2, "L": 0.2, "A": 0.2, "R": 0.2}
+    
+    return (
+        s_score * weights["S"] +
+        o_score * weights["O"] +
+        l_score * weights["L"] +
+        a_score * weights["A"] +
+        r_score * weights["R"]
+    )
