@@ -1,8 +1,52 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { useAuthStore } from '../stores/authStore';
+
+// Demo mode - works without backend
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !import.meta.env.VITE_API_URL;
 
 // Use environment variable or fallback to relative path for same-origin
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+// Mock data for demo mode
+const mockResponses: Record<string, unknown> = {
+  '/solar/dashboard/1': {
+    church_id: 1,
+    church_name: 'Demo Church',
+    assessment_period: 'Q1 2026',
+    overall_score: 72.5,
+    dimension_scores: {
+      S: { score: 78, name: 'Spiritual Vitality', color: '#8B5CF6' },
+      O: { score: 65, name: 'Organisational Governance', color: '#3B82F6' },
+      L: { score: 82, name: 'Love & Care', color: '#EC4899' },
+      A: { score: 68, name: 'Advancement', color: '#10B981' },
+      R: { score: 70, name: 'Resources', color: '#F59E0B' }
+    },
+    strengths: ['Strong prayer culture', 'Active small groups', 'Excellent pastoral care'],
+    improvements: ['Financial systems need updating', 'Youth ministry growth needed'],
+    trend: 'improving'
+  },
+  '/solar/kpis/summary': {
+    total_kpis: 50,
+    dimensions: {
+      S: { name: 'Spiritual Vitality', kpi_count: 10, avg_score: 78 },
+      O: { name: 'Organisational Governance', kpi_count: 10, avg_score: 65 },
+      L: { name: 'Love & Care', kpi_count: 10, avg_score: 82 },
+      A: { name: 'Advancement', kpi_count: 10, avg_score: 68 },
+      R: { name: 'Resources', kpi_count: 10, avg_score: 70 }
+    }
+  },
+  '/members': {
+    members: [
+      { id: 1, first_name: 'John', last_name: 'Doe', email: 'john@example.com', member_status: 'active', created_at: '2024-01-01' },
+      { id: 2, first_name: 'Jane', last_name: 'Smith', email: 'jane@example.com', member_status: 'active', created_at: '2024-01-02' },
+    ],
+    total: 2,
+    page: 1,
+    per_page: 20
+  },
+  '/finance/income': { items: [], total: 0, page: 1, per_page: 20 },
+  '/finance/expenses': { items: [], total: 0, page: 1, per_page: 20 },
+};
 
 // Create axios instance
 const api = axios.create({
@@ -11,6 +55,45 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Demo mode interceptor - return mock data
+if (DEMO_MODE) {
+  api.interceptors.request.use(async (config) => {
+    const path = config.url || '';
+    
+    // Find matching mock response
+    const mockKey = Object.keys(mockResponses).find(key => path.includes(key));
+    
+    if (mockKey) {
+      // Return mock data
+      const mockData = mockResponses[mockKey];
+      return Promise.reject({
+        __MOCK__: true,
+        data: mockData,
+        status: 200,
+        config
+      });
+    }
+    
+    return config;
+  });
+
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.__MOCK__) {
+        return Promise.resolve({
+          data: error.data,
+          status: error.status,
+          statusText: 'OK',
+          headers: {},
+          config: error.config
+        } as AxiosResponse);
+      }
+      return Promise.reject(error);
+    }
+  );
+}
 
 // Request interceptor - add auth token
 api.interceptors.request.use(
@@ -22,6 +105,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    if (error.__MOCK__) return Promise.reject(error);
     return Promise.reject(error);
   }
 );
@@ -30,6 +114,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error.__MOCK__) return Promise.reject(error);
+    
     const originalRequest = error.config;
     
     // If 401 and not already retrying, try to refresh token
