@@ -282,6 +282,103 @@ class handler(BaseHTTPRequestHandler):
                     "currency": "ZAR"
                 })
             
+            # Reports - Income Statement
+            elif path == '/api/v1/reports/income-statement':
+                start_date = query.get('start_date', ['2026-01-01'])[0]
+                end_date = query.get('end_date', ['2026-01-31'])[0]
+                
+                self.send_json({
+                    "report_type": "income_statement",
+                    "period": {
+                        "start_date": start_date,
+                        "end_date": end_date
+                    },
+                    "currency": "ZAR",
+                    "income": {
+                        "total": 12500.00,
+                        "categories": [
+                            {"name": "Tithes", "amount": 8000.00, "percentage": 64},
+                            {"name": "Offerings", "amount": 3000.00, "percentage": 24},
+                            {"name": "Donations", "amount": 1500.00, "percentage": 12}
+                        ]
+                    },
+                    "expenses": {
+                        "total": 8500.00,
+                        "categories": [
+                            {"name": "Salaries", "amount": 4000.00, "percentage": 47},
+                            {"name": "Utilities", "amount": 1500.00, "percentage": 18},
+                            {"name": "Outreach", "amount": 1200.00, "percentage": 14},
+                            {"name": "Maintenance", "amount": 1000.00, "percentage": 12},
+                            {"name": "Supplies", "amount": 800.00, "percentage": 9}
+                        ]
+                    },
+                    "net_income": 4000.00,
+                    "summary": {
+                        "total_income": 12500.00,
+                        "total_expenses": 8500.00,
+                        "net_income": 4000.00,
+                        "margin_percentage": 32
+                    }
+                })
+            
+            # Reports - Monthly Comparison
+            elif path == '/api/v1/reports/monthly-comparison':
+                year = int(query.get('year', ['2026'])[0])
+                
+                # Generate monthly data
+                months = []
+                for i in range(1, 13):
+                    month_name = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i-1]
+                    # Only show data for past/current months in 2026
+                    if year == 2026 and i > 1:
+                        income = 0
+                        expenses = 0
+                    else:
+                        income = 10000 + (i * 500) + ((i * 7) % 1000)
+                        expenses = 7000 + (i * 300) + ((i * 13) % 800)
+                    
+                    months.append({
+                        "month": month_name,
+                        "month_number": i,
+                        "income": income,
+                        "expenses": expenses,
+                        "net": income - expenses
+                    })
+                
+                self.send_json({
+                    "report_type": "monthly_comparison",
+                    "year": year,
+                    "currency": "ZAR",
+                    "months": months,
+                    "totals": {
+                        "income": sum(m['income'] for m in months),
+                        "expenses": sum(m['expenses'] for m in months),
+                        "net": sum(m['net'] for m in months)
+                    },
+                    "averages": {
+                        "income": sum(m['income'] for m in months) / 12,
+                        "expenses": sum(m['expenses'] for m in months) / 12,
+                        "net": sum(m['net'] for m in months) / 12
+                    }
+                })
+            
+            # Reports - Export Transactions (returns empty for now)
+            elif path == '/api/v1/reports/export/transactions':
+                # Return CSV-like response
+                self.send_headers(200, "text/csv")
+                csv_content = "Date,Type,Category,Description,Amount\n"
+                csv_content += "2026-01-05,Income,Tithes,Sunday Service Collection,8000.00\n"
+                csv_content += "2026-01-12,Income,Offerings,Sunday Offering,3000.00\n"
+                csv_content += "2026-01-15,Income,Donations,General Donation,1500.00\n"
+                csv_content += "2026-01-01,Expense,Salaries,Staff Salaries,4000.00\n"
+                csv_content += "2026-01-10,Expense,Utilities,Electricity,1500.00\n"
+                csv_content += "2026-01-15,Expense,Outreach,Community Program,1200.00\n"
+                csv_content += "2026-01-20,Expense,Maintenance,Building Repair,1000.00\n"
+                csv_content += "2026-01-25,Expense,Supplies,Office Supplies,800.00\n"
+                self.wfile.write(csv_content.encode())
+                return
+            
             else:
                 self.send_json({"error": "Not found", "path": path}, 404)
             
