@@ -11,15 +11,12 @@
   ],
   "routes": [
     {
-      "src": "/api/v1/(.*)",
+      "src": "/api/(.*)",
       "dest": "/api/index.py"
     },
     {
-      "src": "/api/(.*)",
+      "src": "/api",
       "dest": "/api/index.py"
     }
-  ],
-  "env": {
-    "PYTHONPATH": "backend"
-  }
+  ]
 }
