@@ -296,24 +296,18 @@ class handler(BaseHTTPRequestHandler):
                         "end": end_date
                     },
                     "currency": "ZAR",
-                    "income": {
-                        "total": 12500.00,
-                        "categories": [
-                            {"name": "Tithes", "amount": 8000.00, "percentage": 64},
-                            {"name": "Offerings", "amount": 3000.00, "percentage": 24},
-                            {"name": "Donations", "amount": 1500.00, "percentage": 12}
-                        ]
-                    },
-                    "expenses": {
-                        "total": 8500.00,
-                        "categories": [
-                            {"name": "Salaries", "amount": 4000.00, "percentage": 47},
-                            {"name": "Utilities", "amount": 1500.00, "percentage": 18},
-                            {"name": "Outreach", "amount": 1200.00, "percentage": 14},
-                            {"name": "Maintenance", "amount": 1000.00, "percentage": 12},
-                            {"name": "Supplies", "amount": 800.00, "percentage": 9}
-                        ]
-                    },
+                    "income": [
+                        {"category": "Tithes", "amount": 8000.00, "percentage": 64},
+                        {"category": "Offerings", "amount": 3000.00, "percentage": 24},
+                        {"category": "Donations", "amount": 1500.00, "percentage": 12}
+                    ],
+                    "expenses": [
+                        {"category": "Salaries", "amount": 4000.00, "percentage": 47},
+                        {"category": "Utilities", "amount": 1500.00, "percentage": 18},
+                        {"category": "Outreach", "amount": 1200.00, "percentage": 14},
+                        {"category": "Maintenance", "amount": 1000.00, "percentage": 12},
+                        {"category": "Supplies", "amount": 800.00, "percentage": 9}
+                    ],
                     "net_income": 4000.00,
                     "summary": {
                         "total_income": 12500.00,
