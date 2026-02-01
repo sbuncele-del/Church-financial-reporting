@@ -1,8 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-// Demo mode - works without backend
-const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+// Demo mode - ALWAYS ON until backend is fixed
+const DEMO_MODE = true;
 
 // Use environment variable with proper fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
