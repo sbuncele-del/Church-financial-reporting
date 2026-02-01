@@ -120,8 +120,9 @@ if (DEMO_MODE) {
   api.interceptors.request.use(async (config) => {
     const path = config.url || '';
     
-    // Find matching mock response
-    const mockKey = Object.keys(mockResponses).find(key => path.includes(key));
+    // Find matching mock response - sort by length descending to match most specific first
+    const sortedKeys = Object.keys(mockResponses).sort((a, b) => b.length - a.length);
+    const mockKey = sortedKeys.find(key => path.includes(key));
     
     if (mockKey) {
       // Return mock data
