@@ -70,6 +70,12 @@ const mockResponses: Record<string, unknown> = {
       R: { name: 'Resources', kpi_count: 10, avg_score: 70 }
     }
   },
+  '/members/summary': {
+    total: 2,
+    active: 2,
+    inactive: 0,
+    visitors: 0
+  },
   '/members': {
     members: [
       { id: 1, first_name: 'John', last_name: 'Doe', email: 'john@example.com', member_status: 'active', created_at: '2024-01-01' },
@@ -115,43 +121,33 @@ const api = axios.create({
   },
 });
 
-// Demo mode interceptor - return mock data
+// Demo mode interceptor - intercept requests and return mock data directly
 if (DEMO_MODE) {
-  api.interceptors.request.use(async (config) => {
-    const path = config.url || '';
-    
-    // Find matching mock response - sort by length descending to match most specific first
-    const sortedKeys = Object.keys(mockResponses).sort((a, b) => b.length - a.length);
-    const mockKey = sortedKeys.find(key => path.includes(key));
-    
-    if (mockKey) {
-      // Return mock data
-      const mockData = mockResponses[mockKey];
-      return Promise.reject({
-        __MOCK__: true,
-        data: mockData,
-        status: 200,
-        config
-      });
-    }
-    
-    return config;
-  });
-
+  // Use response interceptor to catch all requests and return mock data
   api.interceptors.response.use(
     (response) => response,
     (error) => {
-      if (error.__MOCK__) {
+      // Check if this is a network error (no response) - likely means API is down
+      // In demo mode, return mock data instead
+      const path = error.config?.url || '';
+      const sortedKeys = Object.keys(mockResponses).sort((a, b) => b.length - a.length);
+      const mockKey = sortedKeys.find(key => path.includes(key));
+      
+      if (mockKey) {
+        console.log('[DEMO MODE] Returning mock data for:', path);
         return Promise.resolve({
-          data: error.data,
-          status: error.status,
+          data: mockResponses[mockKey],
+          status: 200,
           statusText: 'OK',
           headers: {},
           config: error.config
         } as AxiosResponse);
       }
+      
       return Promise.reject(error);
     }
+  );
+}
   );
 }
 
