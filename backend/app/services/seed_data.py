@@ -13,11 +13,15 @@ def seed_default_categories(db: Session, church_id: int):
     income_categories = [
         {"name": "Tithes", "description": "Regular tithes from members", "is_tax_deductible": True, "sort_order": 1},
         {"name": "Offerings", "description": "General offerings", "is_tax_deductible": True, "sort_order": 2},
-        {"name": "Building Fund", "description": "Donations for building projects", "is_tax_deductible": True, "sort_order": 3},
-        {"name": "Missions", "description": "Donations for mission work", "is_tax_deductible": True, "sort_order": 4},
-        {"name": "Youth Ministry", "description": "Donations for youth programs", "is_tax_deductible": True, "sort_order": 5},
-        {"name": "Benevolence", "description": "Donations to help those in need", "is_tax_deductible": True, "sort_order": 6},
-        {"name": "Special Events", "description": "Event-specific offerings", "is_tax_deductible": True, "sort_order": 7},
+        {"name": "First Fruits", "description": "First fruits offerings", "is_tax_deductible": True, "sort_order": 3},
+        {"name": "Free Will", "description": "Free will offerings", "is_tax_deductible": True, "sort_order": 4},
+        {"name": "Sacrificial Seed", "description": "Sacrificial seed offerings", "is_tax_deductible": True, "sort_order": 5},
+        {"name": "Alms Seed", "description": "Alms seed offerings", "is_tax_deductible": True, "sort_order": 6},
+        {"name": "Building Fund", "description": "Donations for building projects", "is_tax_deductible": True, "sort_order": 7},
+        {"name": "Missions", "description": "Donations for mission work", "is_tax_deductible": True, "sort_order": 8},
+        {"name": "Youth Ministry", "description": "Donations for youth programs", "is_tax_deductible": True, "sort_order": 9},
+        {"name": "Benevolence", "description": "Donations to help those in need", "is_tax_deductible": True, "sort_order": 10},
+        {"name": "Special Events", "description": "Event-specific offerings", "is_tax_deductible": True, "sort_order": 11},
         {"name": "Other Income", "description": "Miscellaneous income", "is_tax_deductible": True, "sort_order": 99},
     ]
     

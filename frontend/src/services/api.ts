@@ -2,10 +2,18 @@ import axios, { AxiosResponse } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 // Demo mode - works without backend
-const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !import.meta.env.VITE_API_URL;
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
-// Use environment variable or fallback to relative path for same-origin
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+// Use environment variable with proper fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+// Log for debugging
+console.log('[API Config]', {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_BASE_URL,
+  DEMO_MODE: import.meta.env.VITE_DEMO_MODE,
+  allEnv: import.meta.env
+});
 
 // Mock data for demo mode
 const mockResponses: Record<string, unknown> = {
@@ -102,6 +110,11 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('[API Request]', config.method?.toUpperCase(), config.url, {
+      baseURL: config.baseURL,
+      fullURL: (config.baseURL || '') + (config.url || ''),
+      hasAuth: !!token
+    });
     return config;
   },
   (error) => {
@@ -112,9 +125,18 @@ api.interceptors.request.use(
 
 // Response interceptor - handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('[API Response] Success:', response.config.url, response.status);
+    return response;
+  },
   async (error) => {
     if (error.__MOCK__) return Promise.reject(error);
+    
+    console.error('[API Response] Error:', error.config?.url, {
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    });
     
     const originalRequest = error.config;
     

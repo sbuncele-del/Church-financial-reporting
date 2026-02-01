@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, startOfYear, endOfYear, startOfMonth, endOfMonth } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
@@ -21,6 +21,11 @@ export default function ReportsPage() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [year, setYear] = useState(new Date().getFullYear());
+
+  // Auto-load report on mount and when filters change
+  useEffect(() => {
+    generateReport();
+  }, [selectedReport, startDate, endDate, year]);
 
   const reports = [
     {

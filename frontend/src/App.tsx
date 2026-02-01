@@ -12,14 +12,28 @@ import Register from './pages/auth/Register'
 
 // Dashboard Pages
 import Dashboard from './pages/Dashboard'
+import Settings from './pages/Settings'
+
+// Finance Pages (now under Resources)
 import Income from './pages/finance/Income'
 import Expenses from './pages/finance/Expenses'
 import Reports from './pages/finance/Reports'
+import Budget from './pages/finance/Budget'
+import FinancialDashboard from './pages/finance/FinancialDashboard'
+
+// Members (now under Love & Care)
 import Members from './pages/Members'
-import Settings from './pages/Settings'
 
 // SOLAR Framework Pages
-import { SOLARDashboard, SOLARAssessment } from './pages/solar'
+import { 
+  SOLARDashboard, 
+  SOLARAssessment,
+  SpiritualVitality,
+  OrganisationalGovernance,
+  LoveCare,
+  Advancement,
+  Resources,
+} from './pages/solar'
 
 // DEV MODE: Auto-login for testing (remove in production)
 const DEV_MODE = true;
@@ -85,17 +99,46 @@ function App() {
         <ProtectedRoute><DashboardLayout /></ProtectedRoute>
       }>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/finance/income" element={<Income />} />
-        <Route path="/finance/expenses" element={<Expenses />} />
-        <Route path="/finance/reports" element={<Reports />} />
-        <Route path="/members" element={<Members />} />
         <Route path="/settings" element={<Settings />} />
         
-        {/* SOLAR Framework Routes */}
+        {/* SOLAR Framework - Main Routes */}
         <Route path="/solar" element={<SOLARDashboard />} />
         <Route path="/solar/dashboard" element={<SOLARDashboard />} />
         <Route path="/solar/assessment" element={<SOLARAssessment />} />
         <Route path="/solar/assessment/:id" element={<SOLARAssessment />} />
+        
+        {/* S - Spiritual Vitality */}
+        <Route path="/solar/spiritual" element={<SpiritualVitality />} />
+        <Route path="/solar/spiritual/*" element={<SpiritualVitality />} />
+        
+        {/* O - Organisational Governance */}
+        <Route path="/solar/organisational" element={<OrganisationalGovernance />} />
+        <Route path="/solar/organisational/*" element={<OrganisationalGovernance />} />
+        
+        {/* L - Love & Care */}
+        <Route path="/solar/love-care" element={<LoveCare />} />
+        <Route path="/solar/love-care/members" element={<Members />} />
+        <Route path="/solar/love-care/*" element={<LoveCare />} />
+        
+        {/* A - Advancement */}
+        <Route path="/solar/advancement" element={<Advancement />} />
+        <Route path="/solar/advancement/*" element={<Advancement />} />
+        
+        {/* R - Resources (includes Finance) */}
+        <Route path="/solar/resources" element={<Resources />} />
+        <Route path="/solar/resources/financial" element={<FinancialDashboard />} />
+        <Route path="/solar/resources/financial/dashboard" element={<FinancialDashboard />} />
+        <Route path="/solar/resources/financial/income" element={<Income />} />
+        <Route path="/solar/resources/financial/expenses" element={<Expenses />} />
+        <Route path="/solar/resources/financial/budget" element={<Budget />} />
+        <Route path="/solar/resources/financial/reports" element={<Reports />} />
+        <Route path="/solar/resources/*" element={<Resources />} />
+        
+        {/* Legacy routes - redirect to new SOLAR structure */}
+        <Route path="/finance/income" element={<Navigate to="/solar/resources/financial/income" replace />} />
+        <Route path="/finance/expenses" element={<Navigate to="/solar/resources/financial/expenses" replace />} />
+        <Route path="/finance/reports" element={<Navigate to="/solar/resources/financial/reports" replace />} />
+        <Route path="/members" element={<Navigate to="/solar/love-care/members" replace />} />
       </Route>
       
       {/* Default redirect */}

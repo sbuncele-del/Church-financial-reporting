@@ -3,7 +3,6 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import {
   HomeIcon,
-  BanknotesIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   ChartBarIcon,
@@ -13,38 +12,117 @@ import {
   Bars3Icon,
   XMarkIcon,
   ChevronDownIcon,
-  SparklesIcon,
   ClipboardDocumentCheckIcon,
+  UserGroupIcon,
+  BuildingOfficeIcon,
+  GlobeAltIcon,
+  CurrencyDollarIcon,
+  HeartIcon,
+  SparklesIcon,
+  RocketLaunchIcon,
+  DocumentChartBarIcon,
+  AcademicCapIcon,
+  BriefcaseIcon,
+  WrenchScrewdriverIcon,
+  BanknotesIcon,
+  HandRaisedIcon,
+  BuildingStorefrontIcon,
+  ComputerDesktopIcon,
+  MegaphoneIcon,
+  ShieldCheckIcon,
+  LightBulbIcon,
+  BookOpenIcon,
+  MusicalNoteIcon,
+  FireIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   {
-    name: 'SOLAR Health',
+    name: 'Spiritual Vitality',
     icon: SparklesIcon,
+    color: 'purple',
     children: [
-      { name: 'Dashboard', href: '/solar/dashboard', icon: ChartBarIcon },
-      { name: 'Assessment', href: '/solar/assessment', icon: ClipboardDocumentCheckIcon },
+      { name: 'Assessment & KPIs', href: '/solar/assessment?dimension=S', icon: ClipboardDocumentCheckIcon },
+      { name: 'Transformational Worship', href: '/solar/spiritual/worship', icon: MusicalNoteIcon },
+      { name: 'Discipleship Pathways', href: '/solar/spiritual/discipleship', icon: AcademicCapIcon },
+      { name: 'Spiritual Growth', href: '/solar/spiritual/growth', icon: FireIcon },
+      { name: 'Prayer Ministry', href: '/solar/spiritual/prayer', icon: HandRaisedIcon },
+      { name: 'Biblical Teaching', href: '/solar/spiritual/teaching', icon: BookOpenIcon },
     ],
   },
   {
-    name: 'Finance',
-    icon: BanknotesIcon,
+    name: 'Organisational Governance',
+    icon: BuildingOfficeIcon,
+    color: 'blue',
     children: [
-      { name: 'Income', href: '/finance/income', icon: ArrowTrendingUpIcon },
-      { name: 'Expenses', href: '/finance/expenses', icon: ArrowTrendingDownIcon },
-      { name: 'Reports', href: '/finance/reports', icon: ChartBarIcon },
+      { name: 'Assessment & KPIs', href: '/solar/assessment?dimension=O', icon: ClipboardDocumentCheckIcon },
+      { name: 'Leadership Development', href: '/solar/organisational/leadership', icon: UserGroupIcon },
+      { name: 'Governance & Policies', href: '/solar/organisational/governance', icon: ShieldCheckIcon },
+      { name: 'Organisational Culture', href: '/solar/organisational/culture', icon: LightBulbIcon },
+      { name: 'Processes & Systems', href: '/solar/organisational/processes', icon: WrenchScrewdriverIcon },
     ],
   },
-  { name: 'Members', href: '/members', icon: UsersIcon },
+  {
+    name: 'Love & Care',
+    icon: HeartIcon,
+    color: 'red',
+    children: [
+      { name: 'Assessment & KPIs', href: '/solar/assessment?dimension=L', icon: ClipboardDocumentCheckIcon },
+      { name: 'Members Directory', href: '/solar/love-care/members', icon: UsersIcon },
+      { name: 'Family Groups', href: '/solar/love-care/family-groups', icon: UserGroupIcon },
+      { name: 'Pastoral Care', href: '/solar/love-care/pastoral-care', icon: HeartIcon },
+      { name: 'Care Ministry', href: '/solar/love-care/ministry', icon: HandRaisedIcon },
+    ],
+  },
+  {
+    name: 'Advancement',
+    icon: RocketLaunchIcon,
+    color: 'green',
+    children: [
+      { name: 'Assessment & KPIs', href: '/solar/assessment?dimension=A', icon: ClipboardDocumentCheckIcon },
+      { name: 'Outreach Programs', href: '/solar/advancement/outreach', icon: MegaphoneIcon },
+      { name: 'Digital Mission', href: '/solar/advancement/digital', icon: ComputerDesktopIcon },
+      { name: 'Community Impact', href: '/solar/advancement/community', icon: BuildingStorefrontIcon },
+      { name: 'Global Mission', href: '/solar/advancement/global', icon: GlobeAltIcon },
+    ],
+  },
+  {
+    name: 'Resources',
+    icon: CurrencyDollarIcon,
+    color: 'amber',
+    children: [
+      { name: 'Assessment & KPIs', href: '/solar/assessment?dimension=R', icon: ClipboardDocumentCheckIcon },
+      { 
+        name: 'Financial Health',
+        isSubMenu: true,
+        children: [
+          { name: 'Dashboard', href: '/solar/resources/financial/dashboard', icon: ChartBarIcon },
+          { name: 'Income', href: '/solar/resources/financial/income', icon: ArrowTrendingUpIcon },
+          { name: 'Expenses', href: '/solar/resources/financial/expenses', icon: ArrowTrendingDownIcon },
+          { name: 'Budget', href: '/solar/resources/financial/budget', icon: ChartBarIcon },
+          { name: 'Reports', href: '/solar/resources/financial/reports', icon: DocumentChartBarIcon },
+        ],
+      },
+      { name: 'Human Resources', href: '/solar/resources/hr', icon: BriefcaseIcon },
+      { name: 'Volunteers', href: '/solar/resources/volunteers', icon: HandRaisedIcon },
+      { name: 'Infrastructure', href: '/solar/resources/infrastructure', icon: BuildingOfficeIcon },
+      { name: 'Investments', href: '/solar/resources/investments', icon: BanknotesIcon },
+      { name: 'Donor Development', href: '/solar/resources/donors', icon: HeartIcon },
+    ],
+  },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
-    'SOLAR Health': true,
-    'Finance': true,
+    'Spiritual Vitality': false,
+    'Organisational Governance': false,
+    'Love & Care': false,
+    'Advancement': false,
+    'Resources': true,
+    'Financial Health': true,
   });
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -97,7 +175,7 @@ export default function DashboardLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
           {navigation.map((item) => (
             item.children ? (
               <div key={item.name}>
@@ -107,24 +185,54 @@ export default function DashboardLayout() {
                 >
                   <div className="flex items-center gap-3">
                     <item.icon className="w-5 h-5" />
-                    {item.name}
+                    <span className="text-sm">{item.name}</span>
                   </div>
                   <ChevronDownIcon className={`w-4 h-4 transition-transform ${expandedMenus[item.name] ? 'rotate-180' : ''}`} />
                 </button>
                 {expandedMenus[item.name] && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    {item.children.map((child) => (
-                      <NavLink
-                        key={child.name}
-                        to={child.href}
-                        className={({ isActive }) => 
-                          `sidebar-link text-sm ${isActive ? 'active' : ''}`
-                        }
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        <child.icon className="w-4 h-4" />
-                        {child.name}
-                      </NavLink>
+                  <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-100 pl-2">
+                    {item.children.map((child: any) => (
+                      child.isSubMenu ? (
+                        // Nested sub-menu (e.g., Financial Health under Resources)
+                        <div key={child.name}>
+                          <button
+                            onClick={() => toggleMenu(child.name)}
+                            className="w-full sidebar-link justify-between text-xs py-1.5"
+                          >
+                            <span className="font-medium text-gray-700">📊 {child.name}</span>
+                            <ChevronDownIcon className={`w-3 h-3 transition-transform ${expandedMenus[child.name] ? 'rotate-180' : ''}`} />
+                          </button>
+                          {expandedMenus[child.name] && (
+                            <div className="ml-3 mt-1 space-y-1 border-l border-gray-200 pl-2">
+                              {child.children.map((subChild: any) => (
+                                <NavLink
+                                  key={subChild.name}
+                                  to={subChild.href}
+                                  className={({ isActive }) => 
+                                    `sidebar-link text-xs py-1.5 ${isActive ? 'active' : ''}`
+                                  }
+                                  onClick={() => setSidebarOpen(false)}
+                                >
+                                  <subChild.icon className="w-3.5 h-3.5" />
+                                  {subChild.name}
+                                </NavLink>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <NavLink
+                          key={child.name}
+                          to={child.href}
+                          className={({ isActive }) => 
+                            `sidebar-link text-xs py-1.5 ${isActive ? 'active' : ''}`
+                          }
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <child.icon className="w-4 h-4" />
+                          {child.name}
+                        </NavLink>
+                      )
                     ))}
                   </div>
                 )}

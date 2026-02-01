@@ -1,6 +1,6 @@
 """
 Vercel Serverless Function - Church SOLAR API with Neon PostgreSQL
-Version: 2.1.0 - Added Reports with generated_at
+Version: 2.2.0 - Added demo mode fallback
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -10,14 +10,70 @@ import secrets
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
-# PostgreSQL connection
-import psycopg2
-from psycopg2.extras import RealDictCursor
-
 DATABASE_URL = os.environ.get('DATABASE_URL', os.environ.get('POSTGRES_URL', ''))
+
+# Demo mode - in-memory data when no database
+DEMO_MODE = not DATABASE_URL
+
+# Demo data
+DEMO_DATA = {
+    'churches': [
+        {'id': 1, 'name': 'Grace Community Church', 'city': 'Johannesburg', 'country': 'South Africa'}
+    ],
+    'users': [
+        {'id': 1, 'email': 'pastor@gracechurch.org', 'password_hash': hashlib.sha256('password123'.encode()).hexdigest(), 
+         'first_name': 'John', 'last_name': 'Pastor', 'role': 'admin', 'church_id': 1, 'is_active': True}
+    ],
+    'sessions': {},  # token -> user_id
+    'income_categories': [
+        {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
+        {'id': 2, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
+        {'id': 3, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
+        {'id': 4, 'name': 'Free Will', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
+        {'id': 5, 'name': 'Sacrificial Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
+        {'id': 6, 'name': 'Alms Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 6},
+        {'id': 7, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 7},
+        {'id': 8, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 8},
+        {'id': 9, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 9},
+        {'id': 10, 'name': 'Benevolence', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
+        {'id': 11, 'name': 'Special Events', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 11},
+        {'id': 12, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
+    ],
+    'expense_categories': [
+        {'id': 1, 'name': 'Salaries & Wages', 'church_id': 1, 'parent_id': None},
+        {'id': 2, 'name': 'Utilities', 'church_id': 1, 'parent_id': None},
+        {'id': 3, 'name': 'Building Maintenance', 'church_id': 1, 'parent_id': None},
+        {'id': 4, 'name': 'Ministry Supplies', 'church_id': 1, 'parent_id': None},
+        {'id': 5, 'name': 'Missions & Outreach', 'church_id': 1, 'parent_id': None},
+        {'id': 6, 'name': 'Office Expenses', 'church_id': 1, 'parent_id': None},
+        {'id': 7, 'name': 'Other Expenses', 'church_id': 1, 'parent_id': None},
+    ],
+    'incomes': [
+        {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 5000.00, 'date': '2026-01-15', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': True, 'description': 'Weekly tithes', 'category_name': 'Tithes'},
+        {'id': 2, 'church_id': 1, 'category_id': 2, 'amount': 2500.00, 'date': '2026-01-15', 'payment_method': 'cash', 'member_id': None, 'is_anonymous': True, 'description': 'Sunday offering', 'category_name': 'Offerings'},
+        {'id': 3, 'church_id': 1, 'category_id': 3, 'amount': 1000.00, 'date': '2026-01-01', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': False, 'description': 'First fruits January', 'category_name': 'First Fruits'},
+    ],
+    'expenses': [
+        {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 8000.00, 'date': '2026-01-25', 'payment_method': 'eft', 'vendor': 'Staff', 'description': 'Pastor salary', 'category_name': 'Salaries & Wages'},
+        {'id': 2, 'church_id': 1, 'category_id': 2, 'amount': 1500.00, 'date': '2026-01-20', 'payment_method': 'eft', 'vendor': 'Eskom', 'description': 'Electricity', 'category_name': 'Utilities'},
+    ],
+    'members': [
+        {'id': 1, 'church_id': 1, 'first_name': 'Jane', 'last_name': 'Doe', 'email': 'jane@email.com', 'phone': '0821234567', 'member_status': 'active'},
+        {'id': 2, 'church_id': 1, 'first_name': 'Peter', 'last_name': 'Smith', 'email': 'peter@email.com', 'phone': '0829876543', 'member_status': 'active'},
+    ],
+    'next_income_id': 4,
+    'next_expense_id': 3,
+}
+
+# PostgreSQL connection (only if DATABASE_URL exists)
+if not DEMO_MODE:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
 
 def get_db():
     """Get database connection"""
+    if DEMO_MODE:
+        return None
     if not DATABASE_URL:
         return None
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
@@ -155,10 +211,30 @@ class handler(BaseHTTPRequestHandler):
             return json.loads(self.rfile.read(content_length).decode())
         return {}
 
+    def get_auth_user(self):
+        """Get authenticated user from token"""
+        auth_header = self.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return None
+        token = auth_header[7:]
+        if DEMO_MODE:
+            user_id = DEMO_DATA['sessions'].get(token)
+            if user_id:
+                for user in DEMO_DATA['users']:
+                    if user['id'] == user_id:
+                        return user
+            return None
+        return None  # DB mode handles this differently
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip('/')
         query = parse_qs(parsed.query)
+        
+        # Demo mode handlers
+        if DEMO_MODE:
+            self.handle_demo_get(path, query)
+            return
         
         # Initialize DB on first request
         init_db()
@@ -394,6 +470,11 @@ class handler(BaseHTTPRequestHandler):
         path = self.path.split('?')[0].rstrip('/')
         data = self.get_body()
         
+        # Demo mode handlers
+        if DEMO_MODE:
+            self.handle_demo_post(path, data)
+            return
+        
         init_db()
         conn = get_db()
         if not conn:
@@ -612,3 +693,243 @@ class handler(BaseHTTPRequestHandler):
             if conn:
                 conn.rollback()
                 conn.close()
+
+    # ========== DEMO MODE HANDLERS ==========
+    
+    def handle_demo_get(self, path, query):
+        """Handle GET requests in demo mode"""
+        
+        # Health/Root
+        if path in ['', '/api', '/api/v1', '/api/v1/health']:
+            self.send_json({"message": "Church SOLAR API", "version": "1.0.0", "status": "healthy", "mode": "demo"})
+        
+        # Current user
+        elif path == '/api/v1/auth/me':
+            user = self.get_auth_user()
+            if user:
+                self.send_json({
+                    'id': user['id'],
+                    'email': user['email'],
+                    'first_name': user['first_name'],
+                    'last_name': user['last_name'],
+                    'role': user['role'],
+                    'church_id': user['church_id']
+                })
+            else:
+                self.send_json({"detail": "Not authenticated"}, 401)
+        
+        # Income categories
+        elif path == '/api/v1/finance/income-categories':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            categories = [c for c in DEMO_DATA['income_categories'] if c['church_id'] == user['church_id']]
+            self.send_json(categories)
+        
+        # Expense categories
+        elif path == '/api/v1/finance/expense-categories':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            categories = [c for c in DEMO_DATA['expense_categories'] if c['church_id'] == user['church_id']]
+            self.send_json(categories)
+        
+        # Income list
+        elif path == '/api/v1/finance/income':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            incomes = [i for i in DEMO_DATA['incomes'] if i['church_id'] == user['church_id']]
+            total = sum(i['amount'] for i in incomes)
+            self.send_json({
+                'incomes': incomes,
+                'total': len(incomes),
+                'total_amount': total,
+                'page': 1,
+                'per_page': 50
+            })
+        
+        # Expenses list
+        elif path == '/api/v1/finance/expenses':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            expenses = [e for e in DEMO_DATA['expenses'] if e['church_id'] == user['church_id']]
+            total = sum(e['amount'] for e in expenses)
+            self.send_json({
+                'expenses': expenses,
+                'total': len(expenses),
+                'total_amount': total,
+                'page': 1,
+                'per_page': 50
+            })
+        
+        # Members list
+        elif path == '/api/v1/members':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            members = [m for m in DEMO_DATA['members'] if m['church_id'] == user['church_id']]
+            self.send_json({
+                'members': members,
+                'total': len(members),
+                'page': 1,
+                'per_page': 50
+            })
+        
+        # Members summary
+        elif path == '/api/v1/members/summary':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            members = [{'id': m['id'], 'first_name': m['first_name'], 'last_name': m['last_name']} 
+                       for m in DEMO_DATA['members'] if m['church_id'] == user['church_id']]
+            self.send_json(members)
+        
+        # SOLAR Dashboard
+        elif path.startswith('/api/v1/solar/dashboard'):
+            user = self.get_auth_user()
+            church_id = user['church_id'] if user else 1
+            church = DEMO_DATA['churches'][0]
+            self.send_json({
+                'church_id': church_id,
+                'church_name': church['name'],
+                'assessment_period': 'Q1 2026',
+                'overall_score': 72.5,
+                'overall_grade': 'B-',
+                'status': 'completed',
+                'dimensions': [
+                    {"dimension": "S", "name": "Spiritual Vitality", "score": 78, "color": "#8B5CF6"},
+                    {"dimension": "O", "name": "Organisational Governance", "score": 65, "color": "#3B82F6"},
+                    {"dimension": "L", "name": "Love & Care", "score": 82, "color": "#EC4899"},
+                    {"dimension": "A", "name": "Advancement", "score": 68, "color": "#10B981"},
+                    {"dimension": "R", "name": "Resources", "score": 70, "color": "#F59E0B"},
+                ],
+                'strengths': ['Strong prayer culture', 'Active small groups'],
+                'improvements': ['Financial systems need updating'],
+                'trend': 'improving'
+            })
+        
+        else:
+            self.send_json({"error": "Not found", "path": path}, 404)
+    
+    def handle_demo_post(self, path, data):
+        """Handle POST requests in demo mode"""
+        
+        # Login
+        if path == '/api/v1/auth/login':
+            email = data.get('email', '')
+            password = data.get('password', '')
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            
+            for user in DEMO_DATA['users']:
+                if user['email'] == email and user['password_hash'] == password_hash:
+                    token = secrets.token_urlsafe(32)
+                    DEMO_DATA['sessions'][token] = user['id']
+                    self.send_json({
+                        'access_token': token,
+                        'token_type': 'bearer',
+                        'user': {
+                            'id': user['id'],
+                            'email': user['email'],
+                            'first_name': user['first_name'],
+                            'last_name': user['last_name'],
+                            'role': user['role'],
+                            'church_id': user['church_id']
+                        }
+                    })
+                    return
+            
+            self.send_json({"detail": "Invalid email or password"}, 401)
+        
+        # Create income
+        elif path == '/api/v1/finance/income':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            
+            category = next((c for c in DEMO_DATA['income_categories'] if c['id'] == data.get('category_id')), None)
+            income = {
+                'id': DEMO_DATA['next_income_id'],
+                'church_id': user['church_id'],
+                'category_id': data.get('category_id'),
+                'amount': float(data.get('amount', 0)),
+                'date': data.get('date', datetime.now().strftime('%Y-%m-%d')),
+                'payment_method': data.get('payment_method', 'cash'),
+                'member_id': data.get('member_id'),
+                'is_anonymous': data.get('is_anonymous', False),
+                'description': data.get('description', ''),
+                'reference_number': data.get('reference_number', ''),
+                'category_name': category['name'] if category else 'Unknown'
+            }
+            DEMO_DATA['incomes'].append(income)
+            DEMO_DATA['next_income_id'] += 1
+            self.send_json(income, 201)
+        
+        # Create expense
+        elif path == '/api/v1/finance/expenses':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            
+            category = next((c for c in DEMO_DATA['expense_categories'] if c['id'] == data.get('category_id')), None)
+            expense = {
+                'id': DEMO_DATA['next_expense_id'],
+                'church_id': user['church_id'],
+                'category_id': data.get('category_id'),
+                'amount': float(data.get('amount', 0)),
+                'date': data.get('date', datetime.now().strftime('%Y-%m-%d')),
+                'payment_method': data.get('payment_method', 'cash'),
+                'vendor': data.get('vendor', ''),
+                'description': data.get('description', ''),
+                'reference_number': data.get('reference_number', ''),
+                'category_name': category['name'] if category else 'Unknown'
+            }
+            DEMO_DATA['expenses'].append(expense)
+            DEMO_DATA['next_expense_id'] += 1
+            self.send_json(expense, 201)
+        
+        # Reports
+        elif path == '/api/v1/reports/generate':
+            user = self.get_auth_user()
+            if not user:
+                self.send_json({"detail": "Not authenticated"}, 401)
+                return
+            
+            report_type = data.get('report_type', 'income_statement')
+            incomes = [i for i in DEMO_DATA['incomes'] if i['church_id'] == user['church_id']]
+            expenses = [e for e in DEMO_DATA['expenses'] if e['church_id'] == user['church_id']]
+            
+            total_income = sum(i['amount'] for i in incomes)
+            total_expenses = sum(e['amount'] for e in expenses)
+            
+            self.send_json({
+                'report_type': report_type,
+                'generated_at': datetime.now().isoformat(),
+                'period': {'start_date': data.get('start_date'), 'end_date': data.get('end_date')},
+                'summary': {
+                    'total_income': total_income,
+                    'total_expenses': total_expenses,
+                    'net_position': total_income - total_expenses
+                },
+                'income_by_category': [
+                    {'category': 'Tithes', 'amount': 5000.00},
+                    {'category': 'Offerings', 'amount': 2500.00},
+                    {'category': 'First Fruits', 'amount': 1000.00},
+                ],
+                'expense_by_category': [
+                    {'category': 'Salaries & Wages', 'amount': 8000.00},
+                    {'category': 'Utilities', 'amount': 1500.00},
+                ]
+            })
+        
+        else:
+            self.send_json({"error": "Not found", "path": path}, 404)

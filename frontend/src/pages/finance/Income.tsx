@@ -25,16 +25,24 @@ export default function IncomePage() {
 
   const loadData = async () => {
     try {
+      console.log('[Income Page] Starting to load data...');
       const [incomeData, categoryData, memberData] = await Promise.all([
         financeService.getIncomes({ per_page: 50 }),
         financeService.getIncomeCategories(),
         memberService.getMembersSummary(),
       ]);
+      console.log('[Income Page] Data loaded:', {
+        incomes: incomeData.incomes.length,
+        categories: categoryData.length,
+        members: memberData.length
+      });
+      console.log('[Income Page] Categories:', categoryData);
       setIncomes(incomeData.incomes);
       setTotalAmount(incomeData.total_amount);
       setCategories(categoryData);
       setMembers(memberData);
     } catch (error) {
+      console.error('[Income Page] Failed to load data:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
