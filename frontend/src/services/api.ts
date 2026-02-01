@@ -17,6 +17,33 @@ console.log('[API Config]', {
 
 // Mock data for demo mode
 const mockResponses: Record<string, unknown> = {
+  '/auth/login': {
+    access_token: 'demo_access_token_12345',
+    refresh_token: 'demo_refresh_token_12345',
+    token_type: 'bearer',
+    user: {
+      id: 1,
+      email: 'demo@church.org',
+      first_name: 'Demo',
+      last_name: 'User',
+      role: 'admin',
+      church_id: 1,
+      is_active: true,
+      is_verified: true,
+      created_at: '2026-01-01T00:00:00Z'
+    }
+  },
+  '/users/me': {
+    id: 1,
+    email: 'demo@church.org',
+    first_name: 'Demo',
+    last_name: 'User',
+    role: 'admin',
+    church_id: 1,
+    is_active: true,
+    is_verified: true,
+    created_at: '2026-01-01T00:00:00Z'
+  },
   '/solar/dashboard/1': {
     church_id: 1,
     church_name: 'Demo Church',
