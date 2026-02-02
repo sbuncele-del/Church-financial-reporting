@@ -11,7 +11,7 @@ import {
   PencilIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '../../utils/currency';
-import api from '../../services/api';
+import { financeService } from '../../services/financeService';
 
 interface BudgetCategory {
   id: string;
@@ -60,6 +60,12 @@ export default function Budget() {
   const [selectedPeriod, setSelectedPeriod] = useState('2026');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [newItem, setNewItem] = useState({
+    name: '',
+    type: 'income' as 'income' | 'expense',
+    budgeted: 0,
+    actual: 0,
+  });
 
   useEffect(() => {
     loadBudgetData();
@@ -68,14 +74,11 @@ export default function Budget() {
   const loadBudgetData = async () => {
     setLoading(true);
     try {
-      // Fetch categories from correct API endpoints
-      const [incomeRes, expenseRes] = await Promise.all([
-        api.get('/api/v1/finance/income-categories').catch(() => ({ data: [] })),
-        api.get('/api/v1/finance/expense-categories').catch(() => ({ data: [] })),
+      // Fetch categories through the shared finance service (respects base URL / auth)
+      const [incomeCategories, expenseCategories] = await Promise.all([
+        financeService.getIncomeCategories().catch(() => []),
+        financeService.getExpenseCategories().catch(() => []),
       ]);
-
-      const incomeCategories = Array.isArray(incomeRes.data) ? incomeRes.data : [];
-      const expenseCategories = Array.isArray(expenseRes.data) ? expenseRes.data : [];
 
       // Build budget categories with realistic sample data
       const categories: BudgetCategory[] = [];
@@ -167,6 +170,29 @@ export default function Budget() {
 
   const toggleGroup = (groupKey: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
+  };
+
+  const addCustomItem = () => {
+    if (!newItem.name.trim()) return;
+    const variance = newItem.type === 'income'
+      ? newItem.actual - newItem.budgeted
+      : newItem.budgeted - newItem.actual;
+    const variancePercent = newItem.budgeted > 0
+      ? (variance / newItem.budgeted) * 100
+      : 0;
+    const item: BudgetCategory = {
+      id: `custom-${Date.now()}`,
+      name: newItem.name.trim(),
+      budgeted: newItem.budgeted,
+      actual: newItem.actual,
+      variance,
+      variancePercent: Math.round(variancePercent * 10) / 10,
+      type: newItem.type,
+      group: 'Custom Items'
+    };
+    setBudgetCategories(prev => [...prev, item]);
+    setExpandedGroups(prev => ({ ...prev, [`${newItem.type}-Custom Items`]: true }));
+    setNewItem({ name: '', type: 'income', budgeted: 0, actual: 0 });
   };
 
   const incomeCategories = budgetCategories.filter(c => c.type === 'income');
@@ -349,6 +375,59 @@ export default function Budget() {
             Edit Budget
           </button>
         </div>
+      </div>
+
+      {/* Quick add custom budget item */}
+      <div className="bg-white shadow rounded-lg p-4 flex flex-col gap-3">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-gray-600">Name</label>
+            <input
+              value={newItem.name}
+              onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+              className="border rounded-md px-3 py-2 text-sm"
+              placeholder="e.g. Youth Camp"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-gray-600">Type</label>
+            <select
+              value={newItem.type}
+              onChange={(e) => setNewItem(prev => ({ ...prev, type: e.target.value as 'income' | 'expense' }))}
+              className="border rounded-md px-3 py-2 text-sm"
+            >
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-gray-600">Budgeted</label>
+            <input
+              type="number"
+              value={newItem.budgeted}
+              onChange={(e) => setNewItem(prev => ({ ...prev, budgeted: Number(e.target.value) }))}
+              className="border rounded-md px-3 py-2 text-sm"
+              min="0"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-gray-600">Actual</label>
+            <input
+              type="number"
+              value={newItem.actual}
+              onChange={(e) => setNewItem(prev => ({ ...prev, actual: Number(e.target.value) }))}
+              className="border rounded-md px-3 py-2 text-sm"
+              min="0"
+            />
+          </div>
+          <button
+            onClick={addCustomItem}
+            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+          >
+            Add Item
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">Custom items show under “Custom Items” group.</p>
       </div>
 
       {/* Summary Cards */}
