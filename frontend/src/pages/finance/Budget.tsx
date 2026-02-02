@@ -4,7 +4,6 @@ import {
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  PlusIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   ChevronDownIcon,
