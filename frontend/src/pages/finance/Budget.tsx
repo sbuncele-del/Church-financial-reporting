@@ -33,7 +33,7 @@ interface CategoryGroup {
 
 // Income category groups mapping (aligned with API categories)
 const INCOME_GROUPS: Record<string, string[]> = {
-  'Tithes & Offerings': ['Tithes', 'Offerings', 'First Fruits', 'Free Will Offering', 'Sacrificial Seed', 'Alms Seed', 'Thanksgiving Offering', 'Love Offering'],
+  'Tithes & Seeds': ['Tithes', 'First Fruits', 'Regular Seed', 'Alms', 'Special Seed', 'Offerings', 'Thanksgiving Offering', 'Love Offering'],
   'Ministry Specific': ['Building Fund', 'Missions', 'Youth Ministry', 'Children Ministry', 'Women Ministry', 'Men Ministry', 'Worship & Music Ministry', 'Outreach & Evangelism'],
   'Welfare & Support': ['Benevolence Fund', 'Funeral Fund', 'Sick Fund', 'Community Support'],
   'Events & Programs': ['Special Events', 'Conferences & Seminars', 'Camp Registration', 'Marriage Ceremony Fees'],
@@ -138,8 +138,11 @@ export default function Budget() {
   const getBudgetAmount = (name: string, type: 'income' | 'expense'): number => {
     if (type === 'income') {
       if (name === 'Tithes') return 180000;
-      if (name === 'Offerings') return 85000;
       if (name === 'First Fruits') return 25000;
+      if (name === 'Regular Seed') return 30000;
+      if (name === 'Special Seed') return 40000;
+      if (name === 'Alms') return 15000;
+      if (name === 'Offerings') return 85000;
       if (name === 'Building Fund') return 45000;
       if (name === 'Missions') return 20000;
       if (name.includes('Ministry')) return 8000;

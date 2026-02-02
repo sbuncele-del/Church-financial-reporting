@@ -21,49 +21,23 @@ DEMO_DATA = {
         {'id': 1, 'name': 'Grace Community Church', 'city': 'Johannesburg', 'country': 'South Africa'}
     ],
     'users': [
-        {'id': 1, 'email': 'pastor@gracechurch.org', 'password_hash': hashlib.sha256('password123'.encode()).hexdigest(), 
+        {'id': 1, 'email': 'pastor@gracechurch.org', 'password_hash': hashlib.sha256('password123'.encode()).hexdigest(),
          'first_name': 'John', 'last_name': 'Pastor', 'role': 'admin', 'church_id': 1, 'is_active': True}
     ],
     'sessions': {},  # token -> user_id
     'income_categories': [
-        # Core giving / seeds
         {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
         {'id': 2, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
         {'id': 3, 'name': 'Regular Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
         {'id': 4, 'name': 'Alms', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
         {'id': 5, 'name': 'Special Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
         {'id': 6, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 6},
-        {'id': 7, 'name': 'Thanksgiving Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 7},
-        {'id': 8, 'name': 'Love Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 8},
-        # Ministry Specific
-        {'id': 9, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
-        {'id': 10, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 11},
-        {'id': 11, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 12},
-        {'id': 12, 'name': 'Children Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 13},
-        {'id': 13, 'name': 'Women Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 14},
-        {'id': 14, 'name': 'Men Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 15},
-        {'id': 15, 'name': 'Worship & Music Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 16},
-        {'id': 16, 'name': 'Outreach & Evangelism', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 17},
-        # Welfare & Support
-        {'id': 17, 'name': 'Benevolence Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 20},
-        {'id': 18, 'name': 'Funeral Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 21},
-        {'id': 19, 'name': 'Sick Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 22},
-        {'id': 20, 'name': 'Community Support', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 23},
-        # Events & Programs
-        {'id': 21, 'name': 'Special Events', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 30},
-        {'id': 22, 'name': 'Conferences & Seminars', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 31},
-        {'id': 23, 'name': 'Camp Registration', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 32},
-        {'id': 24, 'name': 'Marriage Ceremony Fees', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 33},
-        # Other Income
-        {'id': 25, 'name': 'Rental Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 40},
-        {'id': 26, 'name': 'Interest Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 41},
-        {'id': 27, 'name': 'Bookshop Sales', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 42},
-        {'id': 28, 'name': 'Donations - General', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 43},
-        {'id': 29, 'name': 'Grants Received', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 44},
-        {'id': 30, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
+        {'id': 7, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
+        {'id': 8, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 11},
+        {'id': 9, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 12},
+        {'id': 10, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
     ],
     'expense_categories': [
-        # Personnel & Salaries
         {'id': 1, 'name': 'Senior Pastor Salary', 'church_id': 1, 'parent_id': None, 'sort_order': 1},
         {'id': 2, 'name': 'Associate Pastor Salary', 'church_id': 1, 'parent_id': None, 'sort_order': 2},
         {'id': 3, 'name': 'Staff Salaries', 'church_id': 1, 'parent_id': None, 'sort_order': 3},
@@ -71,7 +45,6 @@ DEMO_DATA = {
         {'id': 5, 'name': 'Staff Benefits', 'church_id': 1, 'parent_id': None, 'sort_order': 5},
         {'id': 6, 'name': 'Housing Allowance', 'church_id': 1, 'parent_id': None, 'sort_order': 6},
         {'id': 7, 'name': 'Transport Allowance', 'church_id': 1, 'parent_id': None, 'sort_order': 7},
-        # Facilities
         {'id': 8, 'name': 'Rent/Mortgage', 'church_id': 1, 'parent_id': None, 'sort_order': 10},
         {'id': 9, 'name': 'Electricity', 'church_id': 1, 'parent_id': None, 'sort_order': 11},
         {'id': 10, 'name': 'Water & Rates', 'church_id': 1, 'parent_id': None, 'sort_order': 12},
@@ -80,7 +53,6 @@ DEMO_DATA = {
         {'id': 13, 'name': 'Repairs & Renovations', 'church_id': 1, 'parent_id': None, 'sort_order': 15},
         {'id': 14, 'name': 'Insurance', 'church_id': 1, 'parent_id': None, 'sort_order': 16},
         {'id': 15, 'name': 'Garden & Grounds', 'church_id': 1, 'parent_id': None, 'sort_order': 17},
-        # Administration
         {'id': 16, 'name': 'Office Supplies', 'church_id': 1, 'parent_id': None, 'sort_order': 20},
         {'id': 17, 'name': 'Printing & Stationery', 'church_id': 1, 'parent_id': None, 'sort_order': 21},
         {'id': 18, 'name': 'Telephone & Internet', 'church_id': 1, 'parent_id': None, 'sort_order': 22},
@@ -89,39 +61,32 @@ DEMO_DATA = {
         {'id': 21, 'name': 'Accounting & Audit', 'church_id': 1, 'parent_id': None, 'sort_order': 25},
         {'id': 22, 'name': 'Legal Fees', 'church_id': 1, 'parent_id': None, 'sort_order': 26},
         {'id': 23, 'name': 'Software & Subscriptions', 'church_id': 1, 'parent_id': None, 'sort_order': 27},
-        # Ministry Programs
         {'id': 24, 'name': 'Youth Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 30},
         {'id': 25, 'name': 'Children Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 31},
         {'id': 26, 'name': 'Women Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 32},
         {'id': 27, 'name': 'Men Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 33},
         {'id': 28, 'name': 'Small Groups & Cell Ministry', 'church_id': 1, 'parent_id': None, 'sort_order': 34},
         {'id': 29, 'name': 'Discipleship & Training', 'church_id': 1, 'parent_id': None, 'sort_order': 35},
-        # Worship & Media
         {'id': 30, 'name': 'Worship Equipment', 'church_id': 1, 'parent_id': None, 'sort_order': 40},
         {'id': 31, 'name': 'Sound & AV Equipment', 'church_id': 1, 'parent_id': None, 'sort_order': 41},
         {'id': 32, 'name': 'Music Licensing (CCLI)', 'church_id': 1, 'parent_id': None, 'sort_order': 42},
         {'id': 33, 'name': 'Livestream & Media', 'church_id': 1, 'parent_id': None, 'sort_order': 43},
         {'id': 34, 'name': 'Website & Social Media', 'church_id': 1, 'parent_id': None, 'sort_order': 44},
-        # Outreach & Missions
         {'id': 35, 'name': 'Missions Support', 'church_id': 1, 'parent_id': None, 'sort_order': 50},
         {'id': 36, 'name': 'Outreach Programs', 'church_id': 1, 'parent_id': None, 'sort_order': 51},
         {'id': 37, 'name': 'Evangelism Materials', 'church_id': 1, 'parent_id': None, 'sort_order': 52},
         {'id': 38, 'name': 'Community Projects', 'church_id': 1, 'parent_id': None, 'sort_order': 53},
-        # Welfare & Benevolence
         {'id': 39, 'name': 'Benevolence - Members', 'church_id': 1, 'parent_id': None, 'sort_order': 60},
         {'id': 40, 'name': 'Benevolence - Community', 'church_id': 1, 'parent_id': None, 'sort_order': 61},
         {'id': 41, 'name': 'Funeral Assistance', 'church_id': 1, 'parent_id': None, 'sort_order': 62},
         {'id': 42, 'name': 'Food Parcels & Relief', 'church_id': 1, 'parent_id': None, 'sort_order': 63},
-        # Events & Hospitality
         {'id': 43, 'name': 'Church Events', 'church_id': 1, 'parent_id': None, 'sort_order': 70},
         {'id': 44, 'name': 'Conferences & Seminars', 'church_id': 1, 'parent_id': None, 'sort_order': 71},
         {'id': 45, 'name': 'Hospitality & Catering', 'church_id': 1, 'parent_id': None, 'sort_order': 72},
         {'id': 46, 'name': 'Guest Speakers', 'church_id': 1, 'parent_id': None, 'sort_order': 73},
-        # Transport & Travel
         {'id': 47, 'name': 'Vehicle Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 80},
         {'id': 48, 'name': 'Fuel', 'church_id': 1, 'parent_id': None, 'sort_order': 81},
         {'id': 49, 'name': 'Travel & Accommodation', 'church_id': 1, 'parent_id': None, 'sort_order': 82},
-        # Other
         {'id': 50, 'name': 'Denominational Dues', 'church_id': 1, 'parent_id': None, 'sort_order': 90},
         {'id': 51, 'name': 'Books & Resources', 'church_id': 1, 'parent_id': None, 'sort_order': 91},
         {'id': 52, 'name': 'Miscellaneous Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 99},
@@ -137,100 +102,20 @@ DEMO_DATA = {
         {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 8000.00, 'date': '2026-01-25', 'payment_method': 'eft', 'vendor': 'Staff', 'description': 'Pastor salary', 'category_name': 'Salaries & Wages'},
         {'id': 2, 'church_id': 1, 'category_id': 2, 'amount': 1500.00, 'date': '2026-01-20', 'payment_method': 'eft', 'vendor': 'Eskom', 'description': 'Electricity', 'category_name': 'Utilities'},
     ],
-    'income_categories': [
-        # Core giving streams requested
-        {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
-        {'id': 2, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
-        {'id': 3, 'name': 'Regular Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
-        {'id': 4, 'name': 'Alms', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
-        {'id': 5, 'name': 'Special Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
-        # Supporting income streams (kept minimal)
-        {'id': 6, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
-        {'id': 7, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 11},
-        {'id': 8, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 12},
-        {'id': 9, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 13},
-        {'id': 10, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
+    'members': [
+        {'id': 1, 'church_id': 1, 'first_name': 'Jane', 'last_name': 'Doe', 'email': 'jane@email.com', 'phone': '0821234567', 'member_status': 'active'},
+        {'id': 2, 'church_id': 1, 'first_name': 'Peter', 'last_name': 'Smith', 'email': 'peter@email.com', 'phone': '0829876543', 'member_status': 'active'},
     ],
-                last_name VARCHAR(100),
-                role VARCHAR(50) DEFAULT 'member',
-                church_id INTEGER,
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Churches table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS churches (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                city VARCHAR(100),
-                country VARCHAR(100),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # SOLAR Assessments table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS solar_assessments (
-                id SERIAL PRIMARY KEY,
-                church_id INTEGER REFERENCES churches(id),
-                assessment_period VARCHAR(50),
-                status VARCHAR(50) DEFAULT 'draft',
-                spiritual_vitality_score DECIMAL(5,2) DEFAULT 0,
-                organisational_governance_score DECIMAL(5,2) DEFAULT 0,
-                love_care_score DECIMAL(5,2) DEFAULT 0,
-                advancement_score DECIMAL(5,2) DEFAULT 0,
-                resources_score DECIMAL(5,2) DEFAULT 0,
-                overall_score DECIMAL(5,2) DEFAULT 0,
-                overall_grade VARCHAR(5),
-                notes TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Members table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS members (
-                id SERIAL PRIMARY KEY,
-                church_id INTEGER REFERENCES churches(id),
-                first_name VARCHAR(100) NOT NULL,
-                last_name VARCHAR(100) NOT NULL,
-                email VARCHAR(255),
-                phone VARCHAR(50),
-                member_status VARCHAR(50) DEFAULT 'active',
-                join_date DATE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Insert default church if none exists
-        cur.execute("SELECT COUNT(*) as count FROM churches")
-        if cur.fetchone()['count'] == 0:
-            cur.execute("""
-                INSERT INTO churches (name, city, country) 
-                VALUES ('Grace Baptist Church', 'Johannesburg', 'South Africa')
-            """)
-        
-        # Insert default admin user if none exists
-        cur.execute("SELECT COUNT(*) as count FROM users")
-        if cur.fetchone()['count'] == 0:
-            password_hash = hashlib.sha256('admin123'.encode()).hexdigest()
-            cur.execute("""
-                INSERT INTO users (email, password_hash, first_name, last_name, role, church_id) 
-                VALUES ('admin@church.org', %s, 'Admin', 'User', 'admin', 1)
-            """, (password_hash,))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"DB Init Error: {e}")
-        conn.rollback()
-        conn.close()
-        return False
+    'next_income_id': 6,
+    'next_expense_id': 3,
+}
+
+def get_db():
+    return None
+
+
+def init_db():
+    return False
 
 def calculate_grade(score):
     """Calculate letter grade from score"""

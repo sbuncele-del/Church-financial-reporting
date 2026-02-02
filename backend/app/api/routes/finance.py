@@ -9,6 +9,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.services.seed_data import seed_default_categories
 from app.models.finance import (
     Income, Expense, IncomeCategory, ExpenseCategory,
     FinancialAccount, Budget, BudgetItem
@@ -42,6 +43,11 @@ async def list_income_categories(
     if not include_inactive:
         query = query.filter(IncomeCategory.is_active == True)
     categories = query.order_by(IncomeCategory.sort_order, IncomeCategory.name).all()
+
+    # Auto-seed if none exist so users always see the core categories
+    if not categories:
+        seed_default_categories(db, church_id)
+        categories = query.order_by(IncomeCategory.sort_order, IncomeCategory.name).all()
     return categories
 
 

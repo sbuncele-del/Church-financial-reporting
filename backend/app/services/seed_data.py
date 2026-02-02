@@ -9,19 +9,13 @@ def seed_default_categories(db: Session, church_id: int):
     """
     Create default income and expense categories for a new church.
     """
-    # Default Income Categories (common for most churches)
+    # Default Income Categories (aligned to requested seeds)
     income_categories = [
         {"name": "Tithes", "description": "Regular tithes from members", "is_tax_deductible": True, "sort_order": 1},
-        {"name": "Offerings", "description": "General offerings", "is_tax_deductible": True, "sort_order": 2},
-        {"name": "First Fruits", "description": "First fruits offerings", "is_tax_deductible": True, "sort_order": 3},
-        {"name": "Free Will", "description": "Free will offerings", "is_tax_deductible": True, "sort_order": 4},
-        {"name": "Sacrificial Seed", "description": "Sacrificial seed offerings", "is_tax_deductible": True, "sort_order": 5},
-        {"name": "Alms Seed", "description": "Alms seed offerings", "is_tax_deductible": True, "sort_order": 6},
-        {"name": "Building Fund", "description": "Donations for building projects", "is_tax_deductible": True, "sort_order": 7},
-        {"name": "Missions", "description": "Donations for mission work", "is_tax_deductible": True, "sort_order": 8},
-        {"name": "Youth Ministry", "description": "Donations for youth programs", "is_tax_deductible": True, "sort_order": 9},
-        {"name": "Benevolence", "description": "Donations to help those in need", "is_tax_deductible": True, "sort_order": 10},
-        {"name": "Special Events", "description": "Event-specific offerings", "is_tax_deductible": True, "sort_order": 11},
+        {"name": "First Fruits", "description": "First fruits offerings", "is_tax_deductible": True, "sort_order": 2},
+        {"name": "Regular Seed", "description": "General seed offerings", "is_tax_deductible": True, "sort_order": 3},
+        {"name": "Alms", "description": "Alms and relief support", "is_tax_deductible": True, "sort_order": 4},
+        {"name": "Special Seed", "description": "Special or sacrificial seeds", "is_tax_deductible": True, "sort_order": 5},
         {"name": "Other Income", "description": "Miscellaneous income", "is_tax_deductible": True, "sort_order": 99},
     ]
     
