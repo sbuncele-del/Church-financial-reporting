@@ -26,27 +26,105 @@ DEMO_DATA = {
     ],
     'sessions': {},  # token -> user_id
     'income_categories': [
+        # Tithes & Offerings
         {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
         {'id': 2, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
         {'id': 3, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
-        {'id': 4, 'name': 'Free Will', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
+        {'id': 4, 'name': 'Free Will Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
         {'id': 5, 'name': 'Sacrificial Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
         {'id': 6, 'name': 'Alms Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 6},
-        {'id': 7, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 7},
-        {'id': 8, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 8},
-        {'id': 9, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 9},
-        {'id': 10, 'name': 'Benevolence', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
-        {'id': 11, 'name': 'Special Events', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 11},
-        {'id': 12, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
+        {'id': 7, 'name': 'Thanksgiving Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 7},
+        {'id': 8, 'name': 'Love Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 8},
+        # Ministry Specific
+        {'id': 9, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
+        {'id': 10, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 11},
+        {'id': 11, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 12},
+        {'id': 12, 'name': 'Children Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 13},
+        {'id': 13, 'name': 'Women Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 14},
+        {'id': 14, 'name': 'Men Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 15},
+        {'id': 15, 'name': 'Worship & Music Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 16},
+        {'id': 16, 'name': 'Outreach & Evangelism', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 17},
+        # Welfare & Support
+        {'id': 17, 'name': 'Benevolence Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 20},
+        {'id': 18, 'name': 'Funeral Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 21},
+        {'id': 19, 'name': 'Sick Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 22},
+        {'id': 20, 'name': 'Community Support', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 23},
+        # Events & Programs
+        {'id': 21, 'name': 'Special Events', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 30},
+        {'id': 22, 'name': 'Conferences & Seminars', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 31},
+        {'id': 23, 'name': 'Camp Registration', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 32},
+        {'id': 24, 'name': 'Marriage Ceremony Fees', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 33},
+        # Other Income
+        {'id': 25, 'name': 'Rental Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 40},
+        {'id': 26, 'name': 'Interest Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 41},
+        {'id': 27, 'name': 'Bookshop Sales', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 42},
+        {'id': 28, 'name': 'Donations - General', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 43},
+        {'id': 29, 'name': 'Grants Received', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 44},
+        {'id': 30, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
     ],
     'expense_categories': [
-        {'id': 1, 'name': 'Salaries & Wages', 'church_id': 1, 'parent_id': None},
-        {'id': 2, 'name': 'Utilities', 'church_id': 1, 'parent_id': None},
-        {'id': 3, 'name': 'Building Maintenance', 'church_id': 1, 'parent_id': None},
-        {'id': 4, 'name': 'Ministry Supplies', 'church_id': 1, 'parent_id': None},
-        {'id': 5, 'name': 'Missions & Outreach', 'church_id': 1, 'parent_id': None},
-        {'id': 6, 'name': 'Office Expenses', 'church_id': 1, 'parent_id': None},
-        {'id': 7, 'name': 'Other Expenses', 'church_id': 1, 'parent_id': None},
+        # Personnel & Salaries
+        {'id': 1, 'name': 'Senior Pastor Salary', 'church_id': 1, 'parent_id': None, 'sort_order': 1},
+        {'id': 2, 'name': 'Associate Pastor Salary', 'church_id': 1, 'parent_id': None, 'sort_order': 2},
+        {'id': 3, 'name': 'Staff Salaries', 'church_id': 1, 'parent_id': None, 'sort_order': 3},
+        {'id': 4, 'name': 'Payroll Taxes & UIF', 'church_id': 1, 'parent_id': None, 'sort_order': 4},
+        {'id': 5, 'name': 'Staff Benefits', 'church_id': 1, 'parent_id': None, 'sort_order': 5},
+        {'id': 6, 'name': 'Housing Allowance', 'church_id': 1, 'parent_id': None, 'sort_order': 6},
+        {'id': 7, 'name': 'Transport Allowance', 'church_id': 1, 'parent_id': None, 'sort_order': 7},
+        # Facilities
+        {'id': 8, 'name': 'Rent/Mortgage', 'church_id': 1, 'parent_id': None, 'sort_order': 10},
+        {'id': 9, 'name': 'Electricity', 'church_id': 1, 'parent_id': None, 'sort_order': 11},
+        {'id': 10, 'name': 'Water & Rates', 'church_id': 1, 'parent_id': None, 'sort_order': 12},
+        {'id': 11, 'name': 'Security', 'church_id': 1, 'parent_id': None, 'sort_order': 13},
+        {'id': 12, 'name': 'Cleaning & Maintenance', 'church_id': 1, 'parent_id': None, 'sort_order': 14},
+        {'id': 13, 'name': 'Repairs & Renovations', 'church_id': 1, 'parent_id': None, 'sort_order': 15},
+        {'id': 14, 'name': 'Insurance', 'church_id': 1, 'parent_id': None, 'sort_order': 16},
+        {'id': 15, 'name': 'Garden & Grounds', 'church_id': 1, 'parent_id': None, 'sort_order': 17},
+        # Administration
+        {'id': 16, 'name': 'Office Supplies', 'church_id': 1, 'parent_id': None, 'sort_order': 20},
+        {'id': 17, 'name': 'Printing & Stationery', 'church_id': 1, 'parent_id': None, 'sort_order': 21},
+        {'id': 18, 'name': 'Telephone & Internet', 'church_id': 1, 'parent_id': None, 'sort_order': 22},
+        {'id': 19, 'name': 'Postage & Courier', 'church_id': 1, 'parent_id': None, 'sort_order': 23},
+        {'id': 20, 'name': 'Bank Charges', 'church_id': 1, 'parent_id': None, 'sort_order': 24},
+        {'id': 21, 'name': 'Accounting & Audit', 'church_id': 1, 'parent_id': None, 'sort_order': 25},
+        {'id': 22, 'name': 'Legal Fees', 'church_id': 1, 'parent_id': None, 'sort_order': 26},
+        {'id': 23, 'name': 'Software & Subscriptions', 'church_id': 1, 'parent_id': None, 'sort_order': 27},
+        # Ministry Programs
+        {'id': 24, 'name': 'Youth Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 30},
+        {'id': 25, 'name': 'Children Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 31},
+        {'id': 26, 'name': 'Women Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 32},
+        {'id': 27, 'name': 'Men Ministry Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 33},
+        {'id': 28, 'name': 'Small Groups & Cell Ministry', 'church_id': 1, 'parent_id': None, 'sort_order': 34},
+        {'id': 29, 'name': 'Discipleship & Training', 'church_id': 1, 'parent_id': None, 'sort_order': 35},
+        # Worship & Media
+        {'id': 30, 'name': 'Worship Equipment', 'church_id': 1, 'parent_id': None, 'sort_order': 40},
+        {'id': 31, 'name': 'Sound & AV Equipment', 'church_id': 1, 'parent_id': None, 'sort_order': 41},
+        {'id': 32, 'name': 'Music Licensing (CCLI)', 'church_id': 1, 'parent_id': None, 'sort_order': 42},
+        {'id': 33, 'name': 'Livestream & Media', 'church_id': 1, 'parent_id': None, 'sort_order': 43},
+        {'id': 34, 'name': 'Website & Social Media', 'church_id': 1, 'parent_id': None, 'sort_order': 44},
+        # Outreach & Missions
+        {'id': 35, 'name': 'Missions Support', 'church_id': 1, 'parent_id': None, 'sort_order': 50},
+        {'id': 36, 'name': 'Outreach Programs', 'church_id': 1, 'parent_id': None, 'sort_order': 51},
+        {'id': 37, 'name': 'Evangelism Materials', 'church_id': 1, 'parent_id': None, 'sort_order': 52},
+        {'id': 38, 'name': 'Community Projects', 'church_id': 1, 'parent_id': None, 'sort_order': 53},
+        # Welfare & Benevolence
+        {'id': 39, 'name': 'Benevolence - Members', 'church_id': 1, 'parent_id': None, 'sort_order': 60},
+        {'id': 40, 'name': 'Benevolence - Community', 'church_id': 1, 'parent_id': None, 'sort_order': 61},
+        {'id': 41, 'name': 'Funeral Assistance', 'church_id': 1, 'parent_id': None, 'sort_order': 62},
+        {'id': 42, 'name': 'Food Parcels & Relief', 'church_id': 1, 'parent_id': None, 'sort_order': 63},
+        # Events & Hospitality
+        {'id': 43, 'name': 'Church Events', 'church_id': 1, 'parent_id': None, 'sort_order': 70},
+        {'id': 44, 'name': 'Conferences & Seminars', 'church_id': 1, 'parent_id': None, 'sort_order': 71},
+        {'id': 45, 'name': 'Hospitality & Catering', 'church_id': 1, 'parent_id': None, 'sort_order': 72},
+        {'id': 46, 'name': 'Guest Speakers', 'church_id': 1, 'parent_id': None, 'sort_order': 73},
+        # Transport & Travel
+        {'id': 47, 'name': 'Vehicle Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 80},
+        {'id': 48, 'name': 'Fuel', 'church_id': 1, 'parent_id': None, 'sort_order': 81},
+        {'id': 49, 'name': 'Travel & Accommodation', 'church_id': 1, 'parent_id': None, 'sort_order': 82},
+        # Other
+        {'id': 50, 'name': 'Denominational Dues', 'church_id': 1, 'parent_id': None, 'sort_order': 90},
+        {'id': 51, 'name': 'Books & Resources', 'church_id': 1, 'parent_id': None, 'sort_order': 91},
+        {'id': 52, 'name': 'Miscellaneous Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 99},
     ],
     'incomes': [
         {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 5000.00, 'date': '2026-01-15', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': True, 'description': 'Weekly tithes', 'category_name': 'Tithes'},
@@ -718,31 +796,19 @@ class handler(BaseHTTPRequestHandler):
             else:
                 self.send_json({"detail": "Not authenticated"}, 401)
         
-        # Income categories
+        # Income categories - no auth required (categories are not sensitive)
         elif path == '/api/v1/finance/income-categories':
-            user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
-            categories = [c for c in DEMO_DATA['income_categories'] if c['church_id'] == user['church_id']]
+            categories = DEMO_DATA['income_categories']
             self.send_json(categories)
         
-        # Expense categories
+        # Expense categories - no auth required
         elif path == '/api/v1/finance/expense-categories':
-            user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
-            categories = [c for c in DEMO_DATA['expense_categories'] if c['church_id'] == user['church_id']]
+            categories = DEMO_DATA['expense_categories']
             self.send_json(categories)
         
-        # Income list
+        # Income list - no auth for demo (serverless doesn't persist sessions)
         elif path == '/api/v1/finance/income':
-            user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
-            incomes = [i for i in DEMO_DATA['incomes'] if i['church_id'] == user['church_id']]
+            incomes = DEMO_DATA['incomes']
             total = sum(i['amount'] for i in incomes)
             self.send_json({
                 'incomes': incomes,
@@ -752,13 +818,9 @@ class handler(BaseHTTPRequestHandler):
                 'per_page': 50
             })
         
-        # Expenses list
+        # Expenses list - no auth for demo
         elif path == '/api/v1/finance/expenses':
-            user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
-            expenses = [e for e in DEMO_DATA['expenses'] if e['church_id'] == user['church_id']]
+            expenses = DEMO_DATA['expenses']
             total = sum(e['amount'] for e in expenses)
             self.send_json({
                 'expenses': expenses,
@@ -768,13 +830,9 @@ class handler(BaseHTTPRequestHandler):
                 'per_page': 50
             })
         
-        # Members list
+        # Members list - no auth for demo
         elif path == '/api/v1/members':
-            user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
-            members = [m for m in DEMO_DATA['members'] if m['church_id'] == user['church_id']]
+            members = DEMO_DATA['members']
             self.send_json({
                 'members': members,
                 'total': len(members),
@@ -782,14 +840,10 @@ class handler(BaseHTTPRequestHandler):
                 'per_page': 50
             })
         
-        # Members summary
+        # Members summary - no auth for demo
         elif path == '/api/v1/members/summary':
-            user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
             members = [{'id': m['id'], 'first_name': m['first_name'], 'last_name': m['last_name']} 
-                       for m in DEMO_DATA['members'] if m['church_id'] == user['church_id']]
+                       for m in DEMO_DATA['members']]
             self.send_json(members)
         
         # SOLAR Dashboard
