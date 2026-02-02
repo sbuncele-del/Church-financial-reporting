@@ -57,7 +57,7 @@ const EXPENSE_GROUPS: Record<string, string[]> = {
 export default function Budget() {
   const [loading, setLoading] = useState(true);
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('2025');
+  const [selectedPeriod, setSelectedPeriod] = useState('2026');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
 
@@ -68,10 +68,10 @@ export default function Budget() {
   const loadBudgetData = async () => {
     setLoading(true);
     try {
-      // Fetch categories from API
+      // Fetch categories from correct API endpoints
       const [incomeRes, expenseRes] = await Promise.all([
-        api.get('/api/finance/categories?type=income').catch(() => ({ data: [] })),
-        api.get('/api/finance/categories?type=expense').catch(() => ({ data: [] })),
+        api.get('/api/v1/finance/income-categories').catch(() => ({ data: [] })),
+        api.get('/api/v1/finance/expense-categories').catch(() => ({ data: [] })),
       ]);
 
       const incomeCategories = Array.isArray(incomeRes.data) ? incomeRes.data : [];
@@ -335,12 +335,12 @@ export default function Budget() {
             onChange={(e) => setSelectedPeriod(e.target.value)}
             className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
+            <option value="2026">2026 Annual Budget</option>
+            <option value="2026-Q1">Q1 2026</option>
+            <option value="2026-Q2">Q2 2026</option>
+            <option value="2026-Q3">Q3 2026</option>
+            <option value="2026-Q4">Q4 2026</option>
             <option value="2025">2025 Annual Budget</option>
-            <option value="2025-Q1">Q1 2025</option>
-            <option value="2025-Q2">Q2 2025</option>
-            <option value="2025-Q3">Q3 2025</option>
-            <option value="2025-Q4">Q4 2025</option>
-            <option value="2024">2024 Annual Budget</option>
           </select>
           <button
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"

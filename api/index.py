@@ -670,6 +670,109 @@ class handler(BaseHTTPRequestHandler):
             categories = DEMO_DATA['expense_categories']
             self.send_json(categories)
         
+        # Budget data - returns budgeted vs actual amounts per category
+        elif path == '/api/v1/finance/budget' or path == '/api/v1/finance/budgets':
+            year = query.get('year', ['2026'])[0]
+            period = query.get('period', ['annual'])[0]
+            
+            # Generate budget data from categories with actual spend from transactions
+            income_cats = DEMO_DATA['income_categories']
+            expense_cats = DEMO_DATA['expense_categories']
+            incomes = DEMO_DATA['incomes']
+            expenses = DEMO_DATA['expenses']
+            
+            # Calculate actual amounts per income category
+            income_actuals = {}
+            for inc in incomes:
+                cat_id = inc['category_id']
+                income_actuals[cat_id] = income_actuals.get(cat_id, 0) + inc['amount']
+            
+            # Calculate actual amounts per expense category
+            expense_actuals = {}
+            for exp in expenses:
+                cat_id = exp['category_id']
+                expense_actuals[cat_id] = expense_actuals.get(cat_id, 0) + exp['amount']
+            
+            # Build budget items with realistic budgeted amounts
+            budget_items = []
+            
+            # Income budget items
+            income_budgets = {
+                'Tithes': 180000, 'First Fruits': 25000, 'Regular Seed': 30000,
+                'Alms': 15000, 'Special Seed': 40000, 'Offerings': 85000,
+                'Building Fund': 45000, 'Missions': 20000, 'Youth Ministry': 8000,
+                'Other Income': 5000
+            }
+            for cat in income_cats:
+                budgeted = income_budgets.get(cat['name'], 5000)
+                actual = income_actuals.get(cat['id'], 0)
+                variance = actual - budgeted
+                budget_items.append({
+                    'id': f"income-{cat['id']}",
+                    'category_id': cat['id'],
+                    'category_name': cat['name'],
+                    'type': 'income',
+                    'budgeted': budgeted,
+                    'actual': actual,
+                    'variance': variance,
+                    'variance_percent': round((variance / budgeted * 100) if budgeted > 0 else 0, 1)
+                })
+            
+            # Expense budget items
+            expense_budgets = {
+                'Senior Pastor Salary': 96000, 'Associate Pastor Salary': 72000,
+                'Staff Salaries': 120000, 'Rent/Mortgage': 48000, 'Electricity': 24000,
+                'Security': 18000, 'Insurance': 12000, 'Missions Support': 24000,
+            }
+            for cat in expense_cats:
+                budgeted = expense_budgets.get(cat['name'], 6000)
+                actual = expense_actuals.get(cat['id'], 0)
+                variance = budgeted - actual  # For expenses, under budget is positive
+                budget_items.append({
+                    'id': f"expense-{cat['id']}",
+                    'category_id': cat['id'],
+                    'category_name': cat['name'],
+                    'type': 'expense',
+                    'budgeted': budgeted,
+                    'actual': actual,
+                    'variance': variance,
+                    'variance_percent': round((variance / budgeted * 100) if budgeted > 0 else 0, 1)
+                })
+            
+            total_income_budgeted = sum(b['budgeted'] for b in budget_items if b['type'] == 'income')
+            total_income_actual = sum(b['actual'] for b in budget_items if b['type'] == 'income')
+            total_expense_budgeted = sum(b['budgeted'] for b in budget_items if b['type'] == 'expense')
+            total_expense_actual = sum(b['actual'] for b in budget_items if b['type'] == 'expense')
+            
+            self.send_json({
+                'year': year,
+                'period': period,
+                'items': budget_items,
+                'summary': {
+                    'total_income_budgeted': total_income_budgeted,
+                    'total_income_actual': total_income_actual,
+                    'total_expense_budgeted': total_expense_budgeted,
+                    'total_expense_actual': total_expense_actual,
+                    'net_budgeted': total_income_budgeted - total_expense_budgeted,
+                    'net_actual': total_income_actual - total_expense_actual,
+                }
+            })
+        
+        # Finance summary
+        elif path == '/api/v1/finance/summary':
+            incomes = DEMO_DATA['incomes']
+            expenses = DEMO_DATA['expenses']
+            total_income = sum(i['amount'] for i in incomes)
+            total_expenses = sum(e['amount'] for e in expenses)
+            
+            self.send_json({
+                'total_income': total_income,
+                'total_expenses': total_expenses,
+                'net_balance': total_income - total_expenses,
+                'period': 'January 2026',
+                'currency': 'ZAR'
+            })
+        
         # Income list - no auth for demo (serverless doesn't persist sessions)
         elif path == '/api/v1/finance/income':
             incomes = DEMO_DATA['incomes']
