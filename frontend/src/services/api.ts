@@ -1,8 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-// Demo mode - ALWAYS ON until backend is fixed
-const DEMO_MODE = true;
+// Demo mode OFF - using real backend API
+const DEMO_MODE = false;
 
 // Use environment variable with proper fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -121,33 +121,45 @@ const api = axios.create({
   },
 });
 
-// Demo mode interceptor - intercept requests and return mock data directly
+// Demo mode interceptor - return mock data BEFORE making real request
 if (DEMO_MODE) {
-  // Use response interceptor to catch all requests and return mock data
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      // Check if this is a network error (no response) - likely means API is down
-      // In demo mode, return mock data instead
-      const path = error.config?.url || '';
+  api.interceptors.request.use(
+    (config) => {
+      const path = config.url || '';
+      // Sort keys by length (longest first) to match more specific routes first
       const sortedKeys = Object.keys(mockResponses).sort((a, b) => b.length - a.length);
       const mockKey = sortedKeys.find(key => path.includes(key));
       
       if (mockKey) {
-        console.log('[DEMO MODE] Returning mock data for:', path);
+        console.log('[DEMO MODE] Intercepting request, returning mock for:', path);
+        // Throw a custom error that will be caught by response interceptor
+        const error = new Error('DEMO_MOCK') as any;
+        error.__DEMO_MOCK__ = true;
+        error.__MOCK_DATA__ = mockResponses[mockKey];
+        error.config = config;
+        throw error;
+      }
+      
+      return config;
+    }
+  );
+  
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      // If this is our demo mock, return it as a successful response
+      if (error.__DEMO_MOCK__) {
+        console.log('[DEMO MODE] Returning mock data');
         return Promise.resolve({
-          data: mockResponses[mockKey],
+          data: error.__MOCK_DATA__,
           status: 200,
           statusText: 'OK',
           headers: {},
           config: error.config
         } as AxiosResponse);
       }
-      
       return Promise.reject(error);
     }
-  );
-}
   );
 }
 

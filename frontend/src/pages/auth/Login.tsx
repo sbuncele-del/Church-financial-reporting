@@ -6,31 +6,12 @@ import { useAuthStore } from '../../stores/authStore';
 import { authService } from '../../services/authService';
 import type { LoginRequest } from '../../types';
 
-// Demo user for when API is unavailable
-const DEMO_USER = {
-  id: 1,
-  email: 'demo@church.org',
-  first_name: 'Demo',
-  last_name: 'User',
-  role: 'admin' as const,
-  church_id: 1,
-  is_active: true,
-  is_verified: true,
-  created_at: '2026-01-01T00:00:00Z'
-};
-
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuthStore();
   
   const { register, handleSubmit, formState: { errors } } = useForm<LoginRequest>();
-
-  const handleDemoLogin = () => {
-    login(DEMO_USER, 'demo_token_12345', 'demo_refresh_12345');
-    toast.success('Welcome to Demo Mode!');
-    navigate('/dashboard');
-  };
 
   const onSubmit = async (data: LoginRequest) => {
     setIsLoading(true);
@@ -119,18 +100,11 @@ export default function Login() {
         </p>
       </div>
 
-      {/* Demo credentials hint */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <p className="text-xs text-gray-500 text-center mb-3">
-          <strong>Demo:</strong> Click below to explore the app without an account
+      {/* Login hint */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+        <p className="text-xs text-blue-700 text-center">
+          <strong>Login:</strong> pastor@gracechurch.org / password123
         </p>
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-        >
-          🚀 Enter Demo Mode
-        </button>
       </div>
     </div>
   );
