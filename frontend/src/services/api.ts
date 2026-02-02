@@ -4,8 +4,8 @@ import { useAuthStore } from '../stores/authStore';
 // Demo mode OFF - using real backend API
 const DEMO_MODE = false;
 
-// Use environment variable with proper fallback
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// Use environment variable with proper fallback (relative path works on Vercel)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // Log for debugging
 console.log('[API Config]', {
@@ -87,15 +87,16 @@ const mockResponses: Record<string, unknown> = {
   },
   '/finance/income-categories': [
     { id: 1, name: 'Tithes', description: 'Regular tithes from members', is_tax_deductible: true },
-    { id: 2, name: 'Offerings', description: 'General offerings', is_tax_deductible: true },
-    { id: 3, name: 'First Fruits', description: 'First fruits offerings', is_tax_deductible: true },
-    { id: 4, name: 'Free Will', description: 'Free will offerings', is_tax_deductible: true },
-    { id: 5, name: 'Sacrificial Seed', description: 'Sacrificial seed offerings', is_tax_deductible: true },
-    { id: 6, name: 'Building Fund', description: 'Donations for building projects', is_tax_deductible: true },
-    { id: 7, name: 'Missions', description: 'Donations for mission work', is_tax_deductible: true },
-    { id: 8, name: 'Youth Ministry', description: 'Donations for youth programs', is_tax_deductible: true },
-    { id: 9, name: 'Benevolence', description: 'Donations to help those in need', is_tax_deductible: true },
-    { id: 10, name: 'Other Income', description: 'Miscellaneous income', is_tax_deductible: false },
+    { id: 2, name: 'First Fruits', description: 'First fruits offerings', is_tax_deductible: true },
+    { id: 3, name: 'Regular Seed', description: 'Consistent seed sowing', is_tax_deductible: true },
+    { id: 4, name: 'Alms', description: 'Gifts to support the poor', is_tax_deductible: true },
+    { id: 5, name: 'Special Seed', description: 'One-time sacrificial seeds', is_tax_deductible: true },
+    { id: 6, name: 'Offerings', description: 'General offerings', is_tax_deductible: true },
+    { id: 7, name: 'Building Fund', description: 'Donations for building projects', is_tax_deductible: true },
+    { id: 8, name: 'Missions', description: 'Donations for mission work', is_tax_deductible: true },
+    { id: 9, name: 'Youth Ministry', description: 'Donations for youth programs', is_tax_deductible: true },
+    { id: 10, name: 'Benevolence', description: 'Donations to help those in need', is_tax_deductible: true },
+    { id: 11, name: 'Other Income', description: 'Miscellaneous income', is_tax_deductible: false },
   ],
   '/finance/expense-categories': [
     { id: 1, name: 'Pastoral Salary', description: 'Pastor compensation' },

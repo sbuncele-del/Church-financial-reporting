@@ -26,13 +26,13 @@ DEMO_DATA = {
     ],
     'sessions': {},  # token -> user_id
     'income_categories': [
-        # Tithes & Offerings
+        # Core giving / seeds
         {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
-        {'id': 2, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
-        {'id': 3, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
-        {'id': 4, 'name': 'Free Will Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
-        {'id': 5, 'name': 'Sacrificial Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
-        {'id': 6, 'name': 'Alms Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 6},
+        {'id': 2, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
+        {'id': 3, 'name': 'Regular Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
+        {'id': 4, 'name': 'Alms', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
+        {'id': 5, 'name': 'Special Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
+        {'id': 6, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 6},
         {'id': 7, 'name': 'Thanksgiving Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 7},
         {'id': 8, 'name': 'Love Offering', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 8},
         # Ministry Specific
@@ -127,51 +127,30 @@ DEMO_DATA = {
         {'id': 52, 'name': 'Miscellaneous Expenses', 'church_id': 1, 'parent_id': None, 'sort_order': 99},
     ],
     'incomes': [
-        {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 5000.00, 'date': '2026-01-15', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': True, 'description': 'Weekly tithes', 'category_name': 'Tithes'},
-        {'id': 2, 'church_id': 1, 'category_id': 2, 'amount': 2500.00, 'date': '2026-01-15', 'payment_method': 'cash', 'member_id': None, 'is_anonymous': True, 'description': 'Sunday offering', 'category_name': 'Offerings'},
-        {'id': 3, 'church_id': 1, 'category_id': 3, 'amount': 1000.00, 'date': '2026-01-01', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': False, 'description': 'First fruits January', 'category_name': 'First Fruits'},
+        {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 6200.00, 'date': '2026-01-15', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': True, 'description': 'Weekly tithes', 'category_name': 'Tithes'},
+        {'id': 2, 'church_id': 1, 'category_id': 2, 'amount': 1800.00, 'date': '2026-01-08', 'payment_method': 'cash', 'member_id': None, 'is_anonymous': False, 'description': 'January first fruits', 'category_name': 'First Fruits'},
+        {'id': 3, 'church_id': 1, 'category_id': 3, 'amount': 950.00, 'date': '2026-01-20', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': False, 'description': 'Regular seed mid-month', 'category_name': 'Regular Seed'},
+        {'id': 4, 'church_id': 1, 'category_id': 4, 'amount': 400.00, 'date': '2026-01-05', 'payment_method': 'cash', 'member_id': None, 'is_anonymous': True, 'description': 'Alms and relief', 'category_name': 'Alms'},
+        {'id': 5, 'church_id': 1, 'category_id': 5, 'amount': 2200.00, 'date': '2026-01-28', 'payment_method': 'eft', 'member_id': None, 'is_anonymous': False, 'description': 'Special seed for building', 'category_name': 'Special Seed'},
     ],
     'expenses': [
         {'id': 1, 'church_id': 1, 'category_id': 1, 'amount': 8000.00, 'date': '2026-01-25', 'payment_method': 'eft', 'vendor': 'Staff', 'description': 'Pastor salary', 'category_name': 'Salaries & Wages'},
         {'id': 2, 'church_id': 1, 'category_id': 2, 'amount': 1500.00, 'date': '2026-01-20', 'payment_method': 'eft', 'vendor': 'Eskom', 'description': 'Electricity', 'category_name': 'Utilities'},
     ],
-    'members': [
-        {'id': 1, 'church_id': 1, 'first_name': 'Jane', 'last_name': 'Doe', 'email': 'jane@email.com', 'phone': '0821234567', 'member_status': 'active'},
-        {'id': 2, 'church_id': 1, 'first_name': 'Peter', 'last_name': 'Smith', 'email': 'peter@email.com', 'phone': '0829876543', 'member_status': 'active'},
+    'income_categories': [
+        # Core giving streams requested
+        {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
+        {'id': 2, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
+        {'id': 3, 'name': 'Regular Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
+        {'id': 4, 'name': 'Alms', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
+        {'id': 5, 'name': 'Special Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
+        # Supporting income streams (kept minimal)
+        {'id': 6, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 10},
+        {'id': 7, 'name': 'Building Fund', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 11},
+        {'id': 8, 'name': 'Missions', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 12},
+        {'id': 9, 'name': 'Youth Ministry', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 13},
+        {'id': 10, 'name': 'Other Income', 'church_id': 1, 'is_tax_deductible': False, 'sort_order': 99},
     ],
-    'next_income_id': 4,
-    'next_expense_id': 3,
-}
-
-# PostgreSQL connection (only if DATABASE_URL exists)
-if not DEMO_MODE:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-
-def get_db():
-    """Get database connection"""
-    if DEMO_MODE:
-        return None
-    if not DATABASE_URL:
-        return None
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-
-def init_db():
-    """Initialize database tables"""
-    conn = get_db()
-    if not conn:
-        return False
-    
-    try:
-        cur = conn.cursor()
-        
-        # Users table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                first_name VARCHAR(100),
                 last_name VARCHAR(100),
                 role VARCHAR(50) DEFAULT 'member',
                 church_id INTEGER,
