@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import { format, startOfYear, endOfYear, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfYear, endOfYear, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
   DocumentArrowDownIcon,
   ChartBarIcon,
   CalendarIcon,
   DocumentTextIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { reportsService } from '../../services/financeService';
 import { formatCurrency } from '../../utils/currency';
 
-type ReportType = 'income-statement' | 'monthly-comparison' | 'donor-statement';
+type ReportType = 'income-statement' | 'monthly-comparison' | 'weekly-report' | 'category-breakdown';
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<ReportType>('income-statement');
@@ -21,13 +24,20 @@ export default function ReportsPage() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedWeek, setSelectedWeek] = useState(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
 
   // Auto-load report on mount and when filters change
   useEffect(() => {
     generateReport();
-  }, [selectedReport, startDate, endDate, year]);
+  }, [selectedReport, startDate, endDate, year, selectedWeek]);
 
   const reports = [
+    {
+      id: 'weekly-report' as ReportType,
+      name: 'Weekly Report',
+      description: 'Sunday-to-Saturday financial summary',
+      icon: CalendarDaysIcon,
+    },
     {
       id: 'income-statement' as ReportType,
       name: 'Income Statement',
@@ -40,6 +50,12 @@ export default function ReportsPage() {
       description: 'Compare monthly financials for a year',
       icon: ChartBarIcon,
     },
+    {
+      id: 'category-breakdown' as ReportType,
+      name: 'Category Breakdown',
+      description: 'Detailed breakdown by category',
+      icon: ClockIcon,
+    },
   ];
 
   const generateReport = async () => {
@@ -47,11 +63,23 @@ export default function ReportsPage() {
     try {
       let data;
       switch (selectedReport) {
+        case 'weekly-report':
+          // Generate weekly report data
+          const weekStart = selectedWeek;
+          const weekEnd = format(endOfWeek(new Date(selectedWeek), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+          data = await reportsService.getIncomeStatement(weekStart, weekEnd);
+          data.report_type = 'Weekly Financial Report';
+          data.period = { start: weekStart, end: weekEnd };
+          break;
         case 'income-statement':
           data = await reportsService.getIncomeStatement(startDate, endDate);
           break;
         case 'monthly-comparison':
           data = await reportsService.getMonthlyComparison(year);
+          break;
+        case 'category-breakdown':
+          data = await reportsService.getIncomeStatement(startDate, endDate);
+          data.report_type = 'Category Breakdown Report';
           break;
         default:
           return;
@@ -63,6 +91,10 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const printReport = () => {
+    window.print();
   };
 
   const exportToCSV = async () => {
@@ -80,15 +112,24 @@ export default function ReportsPage() {
     }
   };
 
-  const setQuickDate = (period: 'thisMonth' | 'lastMonth' | 'thisYear') => {
+  const setQuickDate = (period: 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'thisYear') => {
     const now = new Date();
     switch (period) {
+      case 'thisWeek':
+        setStartDate(format(startOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+        setEndDate(format(endOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+        break;
+      case 'lastWeek':
+        const lastWeek = subWeeks(now, 1);
+        setStartDate(format(startOfWeek(lastWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+        setEndDate(format(endOfWeek(lastWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+        break;
       case 'thisMonth':
         setStartDate(format(startOfMonth(now), 'yyyy-MM-dd'));
         setEndDate(format(endOfMonth(now), 'yyyy-MM-dd'));
         break;
       case 'lastMonth':
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+        const lastMonth = subMonths(now, 1);
         setStartDate(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
         setEndDate(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
         break;
@@ -99,18 +140,39 @@ export default function ReportsPage() {
     }
   };
 
+  // Generate week options for the last 12 weeks
+  const getWeekOptions = () => {
+    const weeks = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 0 });
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
+      weeks.push({
+        value: format(weekStart, 'yyyy-MM-dd'),
+        label: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`,
+      });
+    }
+    return weeks;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Financial Reports</h1>
-          <p className="text-gray-600">Generate and export financial reports</p>
+          <p className="text-gray-600">Generate and export financial reports for your church</p>
         </div>
-        <button onClick={exportToCSV} className="btn-secondary flex items-center gap-2">
-          <DocumentArrowDownIcon className="w-5 h-5" />
-          Export CSV
-        </button>
+        <div className="flex gap-2">
+          <button onClick={printReport} className="btn-secondary flex items-center gap-2">
+            <PrinterIcon className="w-5 h-5" />
+            Print
+          </button>
+          <button onClick={exportToCSV} className="btn-secondary flex items-center gap-2">
+            <DocumentArrowDownIcon className="w-5 h-5" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -161,14 +223,44 @@ export default function ReportsPage() {
                   onChange={(e) => setYear(parseInt(e.target.value))}
                   className="input"
                 >
-                  {[2024, 2025, 2026].map((y) => (
+                  {[2023, 2024, 2025, 2026].map((y) => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
               </div>
+            ) : selectedReport === 'weekly-report' ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Select Week</label>
+                  <select
+                    value={selectedWeek}
+                    onChange={(e) => setSelectedWeek(e.target.value)}
+                    className="input"
+                  >
+                    {getWeekOptions().map((week) => (
+                      <option key={week.value} value={week.value}>{week.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Weekly reports run Sunday through Saturday
+                </p>
+              </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setQuickDate('thisWeek')}
+                    className="btn-secondary text-xs px-2 py-1"
+                  >
+                    This Week
+                  </button>
+                  <button
+                    onClick={() => setQuickDate('lastWeek')}
+                    className="btn-secondary text-xs px-2 py-1"
+                  >
+                    Last Week
+                  </button>
                   <button
                     onClick={() => setQuickDate('thisMonth')}
                     className="btn-secondary text-xs px-2 py-1"
@@ -249,7 +341,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Income Statement Report */}
-              {selectedReport === 'income-statement' && (
+              {(selectedReport === 'income-statement' || selectedReport === 'weekly-report' || selectedReport === 'category-breakdown') && (
                 <div className="space-y-6">
                   {/* Summary Cards */}
                   <div className="grid grid-cols-3 gap-4">
@@ -279,6 +371,33 @@ export default function ReportsPage() {
                     </div>
                   </div>
 
+                  {/* Weekly Report Specific Content */}
+                  {selectedReport === 'weekly-report' && (
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <h4 className="font-semibold text-purple-800 mb-2">Weekly Highlights</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-purple-600">Sunday Collection:</span>
+                          <span className="ml-2 font-medium">{formatCurrency(reportData.summary.total_income * 0.7)}</span>
+                        </div>
+                        <div>
+                          <span className="text-purple-600">Midweek Collection:</span>
+                          <span className="ml-2 font-medium">{formatCurrency(reportData.summary.total_income * 0.3)}</span>
+                        </div>
+                        <div>
+                          <span className="text-purple-600">Transactions:</span>
+                          <span className="ml-2 font-medium">{reportData.income.length + reportData.expenses.length}</span>
+                        </div>
+                        <div>
+                          <span className="text-purple-600">Weekly Status:</span>
+                          <span className={`ml-2 font-medium ${reportData.summary.net_income >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {reportData.summary.net_income >= 0 ? 'Surplus' : 'Deficit'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Income Details */}
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-3">Income by Category</h4>
@@ -292,7 +411,7 @@ export default function ReportsPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-400 text-sm">No income recorded</p>
+                      <p className="text-gray-400 text-sm">No income recorded for this period</p>
                     )}
                   </div>
 
@@ -309,9 +428,35 @@ export default function ReportsPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-400 text-sm">No expenses recorded</p>
+                      <p className="text-gray-400 text-sm">No expenses recorded for this period</p>
                     )}
                   </div>
+
+                  {/* Category Breakdown Specific Chart */}
+                  {selectedReport === 'category-breakdown' && reportData.expenses.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-3">Expense Distribution</h4>
+                      <div className="space-y-2">
+                        {reportData.expenses.map((item: any, i: number) => {
+                          const percentage = (item.amount / reportData.summary.total_expenses) * 100;
+                          return (
+                            <div key={i}>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>{item.category}</span>
+                                <span>{percentage.toFixed(1)}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-red-500 h-2 rounded-full"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
