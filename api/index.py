@@ -837,6 +837,117 @@ class handler(BaseHTTPRequestHandler):
                 'trend': 'improving'
             })
         
+        # Reports - Income Statement
+        elif path == '/api/v1/reports/income-statement':
+            incomes = DEMO_DATA['incomes']
+            expenses = DEMO_DATA['expenses']
+            
+            # Group by category
+            income_by_cat = {}
+            for inc in incomes:
+                cat = inc.get('category_name', 'Other')
+                income_by_cat[cat] = income_by_cat.get(cat, 0) + inc['amount']
+            
+            expense_by_cat = {}
+            for exp in expenses:
+                cat = exp.get('category_name', 'Other')
+                expense_by_cat[cat] = expense_by_cat.get(cat, 0) + exp['amount']
+            
+            total_income = sum(income_by_cat.values())
+            total_expenses = sum(expense_by_cat.values())
+            
+            income_list = [{"category": k, "amount": v, "percentage": round(v/total_income*100) if total_income else 0} 
+                           for k, v in income_by_cat.items()]
+            expense_list = [{"category": k, "amount": v, "percentage": round(v/total_expenses*100) if total_expenses else 0} 
+                            for k, v in expense_by_cat.items()]
+            
+            self.send_json({
+                "report_type": "Income Statement",
+                "generated_at": datetime.now().isoformat(),
+                "period": {"start": "2026-01-01", "end": "2026-01-31"},
+                "currency": "ZAR",
+                "income": income_list,
+                "expenses": expense_list,
+                "net_income": total_income - total_expenses,
+                "summary": {
+                    "total_income": total_income,
+                    "total_expenses": total_expenses,
+                    "net_income": total_income - total_expenses,
+                    "margin_percentage": round((total_income - total_expenses) / total_income * 100) if total_income else 0
+                }
+            })
+        
+        # Reports - Monthly Comparison
+        elif path == '/api/v1/reports/monthly-comparison':
+            year = int(query.get('year', ['2026'])[0])
+            incomes = DEMO_DATA['incomes']
+            expenses = DEMO_DATA['expenses']
+            
+            # January has data
+            jan_income = sum(i['amount'] for i in incomes)
+            jan_expenses = sum(e['amount'] for e in expenses)
+            
+            months = []
+            month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            for i in range(12):
+                if i == 0:  # January has demo data
+                    months.append({
+                        "month": month_names[i],
+                        "month_number": i + 1,
+                        "income": jan_income,
+                        "expenses": jan_expenses,
+                        "net": jan_income - jan_expenses
+                    })
+                else:
+                    months.append({
+                        "month": month_names[i],
+                        "month_number": i + 1,
+                        "income": 0,
+                        "expenses": 0,
+                        "net": 0
+                    })
+            
+            self.send_json({
+                "report_type": "Monthly Comparison",
+                "year": year,
+                "currency": "ZAR",
+                "months": months,
+                "totals": {
+                    "income": jan_income,
+                    "expenses": jan_expenses,
+                    "net": jan_income - jan_expenses
+                }
+            })
+        
+        # Reports - Export Transactions
+        elif path == '/api/v1/reports/export/transactions':
+            incomes = DEMO_DATA['incomes']
+            expenses = DEMO_DATA['expenses']
+            
+            transactions = []
+            for inc in incomes:
+                transactions.append({
+                    "date": inc['date'],
+                    "type": "Income",
+                    "category": inc.get('category_name', 'Other'),
+                    "amount": inc['amount'],
+                    "description": inc.get('description', '')
+                })
+            for exp in expenses:
+                transactions.append({
+                    "date": exp['date'],
+                    "type": "Expense",
+                    "category": exp.get('category_name', 'Other'),
+                    "amount": exp['amount'],
+                    "description": exp.get('description', '')
+                })
+            
+            self.send_json({
+                "transactions": transactions,
+                "total": len(transactions)
+            })
+        
         else:
             self.send_json({"error": "Not found", "path": path}, 404)
     
@@ -869,17 +980,15 @@ class handler(BaseHTTPRequestHandler):
             
             self.send_json({"detail": "Invalid email or password"}, 401)
         
-        # Create income
+        # Create income - allow without auth in demo mode
         elif path == '/api/v1/finance/income':
             user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
+            church_id = user['church_id'] if user else 1  # Default to church 1 in demo
             
             category = next((c for c in DEMO_DATA['income_categories'] if c['id'] == data.get('category_id')), None)
             income = {
                 'id': DEMO_DATA['next_income_id'],
-                'church_id': user['church_id'],
+                'church_id': church_id,
                 'category_id': data.get('category_id'),
                 'amount': float(data.get('amount', 0)),
                 'date': data.get('date', datetime.now().strftime('%Y-%m-%d')),
@@ -894,17 +1003,15 @@ class handler(BaseHTTPRequestHandler):
             DEMO_DATA['next_income_id'] += 1
             self.send_json(income, 201)
         
-        # Create expense
+        # Create expense - allow without auth in demo mode
         elif path == '/api/v1/finance/expenses':
             user = self.get_auth_user()
-            if not user:
-                self.send_json({"detail": "Not authenticated"}, 401)
-                return
+            church_id = user['church_id'] if user else 1  # Default to church 1 in demo
             
             category = next((c for c in DEMO_DATA['expense_categories'] if c['id'] == data.get('category_id')), None)
             expense = {
                 'id': DEMO_DATA['next_expense_id'],
-                'church_id': user['church_id'],
+                'church_id': church_id,
                 'category_id': data.get('category_id'),
                 'amount': float(data.get('amount', 0)),
                 'date': data.get('date', datetime.now().strftime('%Y-%m-%d')),
