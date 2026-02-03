@@ -17,11 +17,22 @@ export default function Login() {
     setIsLoading(true);
     try {
       const response = await authService.login(data);
-      login(response.user, response.access_token, response.refresh_token);
+      login(response.user, response.access_token, response.refresh_token || '');
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Invalid email or password';
+      console.error('[Login Error]', error);
+      const errorData = error.response?.data;
+      let message = 'Invalid email or password';
+      
+      if (errorData?.detail) {
+        message = errorData.detail;
+      } else if (errorData?.error) {
+        message = errorData.error;
+      } else if (errorData?.message) {
+        message = errorData.message;
+      }
+      
       toast.error(message);
     } finally {
       setIsLoading(false);

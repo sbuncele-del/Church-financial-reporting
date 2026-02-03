@@ -28,7 +28,24 @@ export default function Register() {
         navigate('/login');
       }
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Registration failed. Please try again.';
+      console.error('[Register Error]', error);
+      // Handle different error response formats
+      const errorData = error.response?.data;
+      let message = 'Registration failed. Please try again.';
+      
+      if (errorData?.detail) {
+        message = errorData.detail;
+      } else if (errorData?.error) {
+        // Check for duplicate email error
+        if (errorData.error.includes('duplicate key') && errorData.error.includes('email')) {
+          message = 'This email is already registered. Please sign in instead.';
+        } else {
+          message = errorData.error;
+        }
+      } else if (errorData?.message) {
+        message = errorData.message;
+      }
+      
       toast.error(message);
     } finally {
       setIsLoading(false);
