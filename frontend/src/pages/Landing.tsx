@@ -1,6 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { CheckCircleIcon, ShieldCheckIcon, ArrowRightIcon, SparklesIcon, ChartBarIcon, UsersIcon, HeartIcon, CurrencyDollarIcon, BuildingOffice2Icon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
-import { useAuthStore } from '../stores/authStore'
+import { Link } from 'react-router-dom'
+import { CheckCircleIcon, ShieldCheckIcon, ArrowRightIcon, SparklesIcon, ChartBarIcon, UsersIcon, HeartIcon, CurrencyDollarIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline'
 
 const stats = [
   { label: 'Holistic framework', value: 'SOLAR health assessment' },
@@ -41,16 +40,6 @@ const steps = [
 ]
 
 export default function Landing() {
-  const { isAuthenticated, logout, user } = useAuthStore()
-  const navigate = useNavigate()
-  
-  const handleLogout = () => {
-    logout()
-    // Clear any cached data
-    localStorage.removeItem('church-auth-storage')
-    navigate('/')
-  }
-  
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50 overflow-hidden">
       {/* Navbar */}
@@ -63,28 +52,10 @@ export default function Landing() {
             <span className="font-bold text-lg tracking-tight">ChurchSOLAR</span>
           </div>
           <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <>
-                <span className="text-sm text-slate-400">Hi, {user?.first_name || 'User'}</span>
-                <Link to="/dashboard" className="text-sm bg-teal-500 hover:bg-teal-400 text-slate-900 font-semibold px-4 py-2 rounded-full transition shadow-lg shadow-teal-500/20">
-                  Go to Dashboard
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-slate-300 hover:text-white transition flex items-center gap-1"
-                >
-                  <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="text-sm text-slate-300 hover:text-white transition">Sign in</Link>
-                <Link to="/register" className="text-sm bg-teal-500 hover:bg-teal-400 text-slate-900 font-semibold px-4 py-2 rounded-full transition shadow-lg shadow-teal-500/20">
-                  Get Started Free
-                </Link>
-              </>
-            )}
+            <Link to="/login" className="text-sm text-slate-300 hover:text-white transition">Sign in</Link>
+            <Link to="/register" className="text-sm bg-teal-500 hover:bg-teal-400 text-slate-900 font-semibold px-4 py-2 rounded-full transition shadow-lg shadow-teal-500/20">
+              Get Started Free
+            </Link>
           </div>
         </div>
       </nav>

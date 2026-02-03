@@ -120,8 +120,10 @@ function App() {
         <Route path="/members" element={<Navigate to="/solar/love-care/members" replace />} />
       </Route>
       
-      {/* Landing Page - visible to everyone */}
-      <Route path="/" element={<Landing />} />
+      {/* Landing Page - only for unauthenticated users */}
+      <Route path="/" element={
+        <PublicRoute><Landing /></PublicRoute>
+      } />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
