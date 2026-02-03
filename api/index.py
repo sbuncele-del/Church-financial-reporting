@@ -852,14 +852,12 @@ class handler(BaseHTTPRequestHandler):
                 amount = data.get('amount', 0)
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
-                payment_method = data.get('payment_method', 'cash')
-                reference_number = data.get('reference_number', '')
                 
                 cur.execute("""
-                    INSERT INTO income_entries (church_id, category_id, amount, description, date, payment_method, reference_number)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO income_entries (church_id, category_id, amount, description, date)
+                    VALUES (%s, %s, %s, %s, %s)
                     RETURNING *
-                """, (church_id, category_id, amount, description, date, payment_method, reference_number))
+                """, (church_id, category_id, amount, description, date))
                 entry = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(entry))
@@ -871,15 +869,12 @@ class handler(BaseHTTPRequestHandler):
                 amount = data.get('amount', 0)
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
-                payment_method = data.get('payment_method', 'cash')
-                vendor = data.get('vendor', '')
-                receipt_number = data.get('receipt_number', '')
                 
                 cur.execute("""
-                    INSERT INTO expense_entries (church_id, category_id, amount, description, date, payment_method, vendor, receipt_number)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO expense_entries (church_id, category_id, amount, description, date)
+                    VALUES (%s, %s, %s, %s, %s)
                     RETURNING *
-                """, (church_id, category_id, amount, description, date, payment_method, vendor, receipt_number))
+                """, (church_id, category_id, amount, description, date))
                 entry = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(entry))
