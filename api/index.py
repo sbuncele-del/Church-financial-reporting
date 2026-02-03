@@ -648,7 +648,7 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance - Income Categories
             elif path == '/api/v1/finance/income-categories':
-                church_id = query_params.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', ['1'])[0]
                 cur.execute("SELECT * FROM income_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
                 if not categories:
@@ -667,15 +667,16 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance - Expense Categories
             elif path == '/api/v1/finance/expense-categories':
-                cur.execute("SELECT * FROM expense_categories ORDER BY sort_order")
+                church_id = query.get('church_id', ['1'])[0]
+                cur.execute("SELECT * FROM expense_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
                 if not categories:
                     default_cats = [
-                        {'id': 1, 'name': 'Salaries', 'church_id': 1, 'sort_order': 1},
-                        {'id': 2, 'name': 'Utilities', 'church_id': 1, 'sort_order': 2},
-                        {'id': 3, 'name': 'Rent/Mortgage', 'church_id': 1, 'sort_order': 3},
-                        {'id': 4, 'name': 'Ministry Expenses', 'church_id': 1, 'sort_order': 4},
-                        {'id': 5, 'name': 'Maintenance', 'church_id': 1, 'sort_order': 5},
+                        {'id': 1, 'name': 'Salaries', 'church_id': int(church_id), 'sort_order': 1},
+                        {'id': 2, 'name': 'Utilities', 'church_id': int(church_id), 'sort_order': 2},
+                        {'id': 3, 'name': 'Rent/Mortgage', 'church_id': int(church_id), 'sort_order': 3},
+                        {'id': 4, 'name': 'Ministry Expenses', 'church_id': int(church_id), 'sort_order': 4},
+                        {'id': 5, 'name': 'Maintenance', 'church_id': int(church_id), 'sort_order': 5},
                     ]
                     self.send_json(default_cats)
                 else:
