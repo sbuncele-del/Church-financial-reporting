@@ -85,30 +85,6 @@ const SOLAR_DIMENSIONS = [
   },
 ];
 
-// Mock data - replace with real API calls
-const mockSOLARData = {
-  overallScore: 72.5,
-  overallGrade: 'B',
-  assessmentPeriod: 'Q1 2026',
-  dimensions: {
-    S: { score: 78, grade: 'B+', trend: 'improving', change: 3.5 },
-    O: { score: 72, grade: 'B', trend: 'stable', change: 0.5 },
-    L: { score: 80, grade: 'B+', trend: 'improving', change: 2.0 },
-    A: { score: 65, grade: 'C+', trend: 'improving', change: 5.0 },
-    R: { score: 70, grade: 'B-', trend: 'stable', change: 1.0 },
-  },
-  strengths: [
-    'Strong prayer culture and spiritual engagement',
-    'Active family group ecosystem',
-    'Excellent pastoral care systems',
-  ],
-  priorities: [
-    'Digital mission and media influence needs development',
-    'Investment strategy for sustainable financing',
-    'Youth ministry expansion required',
-  ],
-};
-
 function getGradeColor(grade: string): string {
   if (grade.startsWith('A')) return 'text-green-600';
   if (grade.startsWith('B')) return 'text-blue-600';
@@ -128,17 +104,90 @@ function getTrendColor(trend: string): string {
   return 'text-gray-500';
 }
 
+// Empty initial state - no mock data
+const emptySOLARData = {
+  overallScore: 0,
+  overallGrade: 'N/A',
+  assessmentPeriod: 'Not assessed',
+  dimensions: {
+    S: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+    O: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+    L: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+    A: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+    R: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+  },
+  strengths: [],
+  priorities: [],
+  hasAssessment: false,
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
-  const [solarData, setSolarData] = useState(mockSOLARData);
+  const [solarData, setSolarData] = useState(emptySOLARData);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setSolarData(mockSOLARData);
-      setLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
+    const fetchSOLARData = async () => {
+      try {
+        // Get church_id from auth store or localStorage
+        const authData = localStorage.getItem('church-auth-storage');
+        let churchId = 1;
+        if (authData) {
+          const parsed = JSON.parse(authData);
+          churchId = parsed?.state?.user?.church_id || 1;
+        }
+        
+        const response = await fetch(`/api/v1/solar/dashboard/${churchId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch SOLAR data');
+        }
+        const data = await response.json();
+        
+        // Transform dimensions array to object format
+        const dimensionsObj: any = {
+          S: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+          O: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+          L: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+          A: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+          R: { score: 0, grade: 'N/A', trend: 'stable', change: 0 },
+        };
+        
+        // API returns array of dimensions
+        if (Array.isArray(data.dimensions)) {
+          data.dimensions.forEach((dim: any) => {
+            if (dim.dimension && dimensionsObj[dim.dimension]) {
+              dimensionsObj[dim.dimension] = {
+                score: dim.score || 0,
+                grade: dim.grade || 'N/A',
+                trend: dim.trend || 'stable',
+                change: dim.change || 0,
+              };
+            }
+          });
+        }
+        
+        // Check if there's any real assessment data (not all zeros)
+        const hasRealData = Object.values(dimensionsObj).some((d: any) => d.score > 0);
+        
+        setSolarData({
+          overallScore: data.overall_score || 0,
+          overallGrade: data.overall_grade || 'N/A',
+          assessmentPeriod: data.assessment_period || 'Not assessed',
+          dimensions: dimensionsObj,
+          strengths: data.strengths || [],
+          priorities: data.improvements || data.priorities || [],
+          hasAssessment: hasRealData,
+        });
+      } catch (err) {
+        console.error('Error fetching SOLAR data:', err);
+        setError('Unable to load church health data');
+        setSolarData({ ...emptySOLARData, hasAssessment: false });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSOLARData();
   }, []);
 
   // Radar chart data
