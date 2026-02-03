@@ -648,17 +648,18 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance - Income Categories
             elif path == '/api/v1/finance/income-categories':
-                cur.execute("SELECT * FROM income_categories ORDER BY sort_order")
+                church_id = query_params.get('church_id', ['1'])[0]
+                cur.execute("SELECT * FROM income_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
                 if not categories:
-                    # Return default categories if none exist
+                    # Return default categories if none exist for this church
                     default_cats = [
-                        {'id': 1, 'name': 'Tithes', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 1},
-                        {'id': 2, 'name': 'First Fruits', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 2},
-                        {'id': 3, 'name': 'Regular Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 3},
-                        {'id': 4, 'name': 'Alms', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 4},
-                        {'id': 5, 'name': 'Special Seed', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 5},
-                        {'id': 6, 'name': 'Offerings', 'church_id': 1, 'is_tax_deductible': True, 'sort_order': 6},
+                        {'id': 1, 'name': 'Tithes', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 1},
+                        {'id': 2, 'name': 'First Fruits', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 2},
+                        {'id': 3, 'name': 'Regular Seed', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 3},
+                        {'id': 4, 'name': 'Alms', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 4},
+                        {'id': 5, 'name': 'Special Seed', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 5},
+                        {'id': 6, 'name': 'Offerings', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 6},
                     ]
                     self.send_json(default_cats)
                 else:
@@ -783,6 +784,22 @@ class handler(BaseHTTPRequestHandler):
                 """, (church_name, '', 'South Africa'))
                 church = cur.fetchone()
                 church_id = church['id']
+                
+                # Seed default income categories for the new church
+                income_categories = ['Tithes', 'First Fruits', 'Regular Seed', 'Alms', 'Special Seed', 'Missions', 'Building Fund', 'Other Income']
+                for i, cat in enumerate(income_categories, 1):
+                    cur.execute("""
+                        INSERT INTO income_categories (name, church_id, is_tax_deductible, sort_order)
+                        VALUES (%s, %s, true, %s)
+                    """, (cat, church_id, i))
+                
+                # Seed default expense categories for the new church
+                expense_categories = ['Salaries', 'Utilities', 'Rent/Mortgage', 'Office Supplies', 'Missions', 'Outreach', 'Maintenance', 'Other Expenses']
+                for i, cat in enumerate(expense_categories, 1):
+                    cur.execute("""
+                        INSERT INTO expense_categories (name, church_id, sort_order)
+                        VALUES (%s, %s, %s)
+                    """, (cat, church_id, i))
                 
                 # Create user
                 cur.execute("""
