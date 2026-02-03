@@ -99,13 +99,6 @@ export default function Login() {
           </Link>
         </p>
       </div>
-
-      {/* Login hint */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <p className="text-xs text-blue-700 text-center">
-          <strong>Login:</strong> pastor@gracechurch.org / password123
-        </p>
-      </div>
     </div>
   );
 }
