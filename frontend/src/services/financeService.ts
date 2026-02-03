@@ -11,11 +11,20 @@ import type {
   FinancialAccount,
   FinancialSummary
 } from '../types';
+import { useAuthStore } from '../stores/authStore';
+
+// Helper to get current church_id
+const getChurchId = (): number => {
+  const user = useAuthStore.getState().user;
+  return user?.church_id || 1;
+};
 
 export const financeService = {
   // Income Categories
   async getIncomeCategories(): Promise<IncomeCategory[]> {
-    const response = await api.get<IncomeCategory[]>('/finance/income-categories');
+    const response = await api.get<IncomeCategory[]>('/finance/income-categories', {
+      params: { church_id: getChurchId() }
+    });
     return response.data;
   },
 
@@ -44,7 +53,9 @@ export const financeService = {
     category_id?: number;
     member_id?: number;
   }): Promise<IncomeListResponse> {
-    const response = await api.get<IncomeListResponse>('/finance/income', { params });
+    const response = await api.get<IncomeListResponse>('/finance/income', { 
+      params: { ...params, church_id: getChurchId() } 
+    });
     return response.data;
   },
 
@@ -54,7 +65,10 @@ export const financeService = {
   },
 
   async createIncome(data: IncomeCreate): Promise<Income> {
-    const response = await api.post<Income>('/finance/income', data);
+    const response = await api.post<Income>('/finance/income', { 
+      ...data, 
+      church_id: getChurchId() 
+    });
     return response.data;
   },
 

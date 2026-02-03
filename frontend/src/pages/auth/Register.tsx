@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../stores/authStore';
 import type { RegisterRequest } from '../../types';
 
 export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
   
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterRequest & { confirmPassword: string }>();
   const password = watch('password');
@@ -15,9 +17,16 @@ export default function Register() {
   const onSubmit = async (data: RegisterRequest) => {
     setIsLoading(true);
     try {
-      await authService.register(data);
-      toast.success('Account created successfully! Please sign in.');
-      navigate('/login');
+      const response = await authService.register(data);
+      // If response includes access_token, auto-login the user
+      if (response.access_token) {
+        login(response.user, response.access_token, response.refresh_token || '');
+        toast.success('Account created! Welcome to your dashboard.');
+        navigate('/dashboard');
+      } else {
+        toast.success('Account created successfully! Please sign in.');
+        navigate('/login');
+      }
     } catch (error: any) {
       const message = error.response?.data?.detail || 'Registration failed. Please try again.';
       toast.error(message);
@@ -91,6 +100,20 @@ export default function Register() {
             placeholder="+1 (555) 123-4567"
             {...register('phone')}
           />
+        </div>
+
+        <div>
+          <label htmlFor="church_name" className="label">Church name</label>
+          <input
+            type="text"
+            id="church_name"
+            className={`input ${errors.church_name ? 'input-error' : ''}`}
+            placeholder="Grace Community Church"
+            {...register('church_name', { required: 'Church name is required' })}
+          />
+          {errors.church_name && (
+            <p className="mt-1 text-sm text-red-500">{errors.church_name.message}</p>
+          )}
         </div>
 
         <div>

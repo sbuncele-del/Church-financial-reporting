@@ -30,6 +30,7 @@ export interface RegisterRequest {
   first_name: string;
   last_name: string;
   phone?: string;
+  church_name?: string;
 }
 
 export interface TokenResponse {

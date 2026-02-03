@@ -12,8 +12,8 @@ export const authService = {
     return response.data;
   },
 
-  async register(data: RegisterRequest): Promise<User> {
-    const response = await api.post<User>('/auth/register', data);
+  async register(data: RegisterRequest): Promise<TokenResponse> {
+    const response = await api.post<TokenResponse>('/auth/register', data);
     return response.data;
   },
 

@@ -1,10 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
-import { useEffect } from 'react'
 
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout'
 import AuthLayout from './layouts/AuthLayout'
+import Landing from './pages/Landing'
 
 // Auth Pages
 import Login from './pages/auth/Login'
@@ -35,33 +35,12 @@ import {
   Resources,
 } from './pages/solar'
 
-// DEV MODE: Auto-login for testing (remove in production)
-const DEV_MODE = true;
+// Dev mode disabled: require real sign-in/sign-up
+const DEV_MODE = false;
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, login } = useAuthStore()
-  
-  useEffect(() => {
-    // DEV MODE: Auto-login with test user
-    if (DEV_MODE && !isAuthenticated) {
-      login(
-        {
-          id: 1,
-          email: 'pastor@gracechurch.org',
-          first_name: 'John',
-          last_name: 'Pastor',
-          role: 'admin',
-          church_id: 1,
-          is_active: true,
-          is_verified: true,
-          created_at: new Date().toISOString(),
-        },
-        'dev-token',
-        'dev-refresh-token'
-      );
-    }
-  }, [isAuthenticated, login]);
+  const { isAuthenticated } = useAuthStore()
   
   if (!isAuthenticated && !DEV_MODE) {
     return <Navigate to="/login" replace />
@@ -141,9 +120,11 @@ function App() {
         <Route path="/members" element={<Navigate to="/solar/love-care/members" replace />} />
       </Route>
       
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Landing Page - visible to everyone */}
+      <Route path="/" element={<Landing />} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

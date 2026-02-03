@@ -60,6 +60,9 @@ export default function Budget() {
   const [selectedPeriod, setSelectedPeriod] = useState('2026');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [editMode, setEditMode] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<number>(0);
   const [newItem, setNewItem] = useState({
     name: '',
     type: 'income' as 'income' | 'expense',
@@ -195,6 +198,49 @@ export default function Budget() {
     setNewItem({ name: '', type: 'income', budgeted: 0, actual: 0 });
   };
 
+  // Start editing a budget category
+  const startEdit = (categoryId: string, currentBudgeted: number) => {
+    setEditingCategory(categoryId);
+    setEditValue(currentBudgeted);
+  };
+
+  // Save the edited budget amount
+  const saveEdit = (categoryId: string) => {
+    setBudgetCategories(prev => prev.map(cat => {
+      if (cat.id === categoryId) {
+        const newBudgeted = editValue;
+        const variance = cat.type === 'income'
+          ? cat.actual - newBudgeted
+          : newBudgeted - cat.actual;
+        const variancePercent = newBudgeted > 0 ? (variance / newBudgeted) * 100 : 0;
+        return {
+          ...cat,
+          budgeted: newBudgeted,
+          variance,
+          variancePercent: Math.round(variancePercent * 10) / 10,
+        };
+      }
+      return cat;
+    }));
+    setEditingCategory(null);
+    setEditValue(0);
+  };
+
+  // Cancel editing
+  const cancelEdit = () => {
+    setEditingCategory(null);
+    setEditValue(0);
+  };
+
+  // Toggle edit mode for the whole page
+  const toggleEditMode = () => {
+    setEditMode(!editMode);
+    if (editMode) {
+      // Exiting edit mode - cancel any current edit
+      cancelEdit();
+    }
+  };
+
   const incomeCategories = budgetCategories.filter(c => c.type === 'income');
   const expenseCategories = budgetCategories.filter(c => c.type === 'expense');
 
@@ -291,18 +337,62 @@ export default function Budget() {
                       <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actual</th>
                       <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Variance</th>
                       <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                      {editMode && <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
                     {group.categories.map(cat => (
                       <tr key={cat.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 text-sm text-gray-900">{cat.name}</td>
-                        <td className="px-4 py-2 text-sm text-gray-500 text-right">{formatCurrency(cat.budgeted)}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500 text-right">
+                          {editingCategory === cat.id ? (
+                            <input
+                              type="number"
+                              value={editValue}
+                              onChange={(e) => setEditValue(Number(e.target.value))}
+                              className="w-24 px-2 py-1 text-right border border-blue-400 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveEdit(cat.id);
+                                if (e.key === 'Escape') cancelEdit();
+                              }}
+                            />
+                          ) : (
+                            formatCurrency(cat.budgeted)
+                          )}
+                        </td>
                         <td className="px-4 py-2 text-sm text-gray-900 text-right font-medium">{formatCurrency(cat.actual)}</td>
                         <td className={`px-4 py-2 text-sm text-right ${getVarianceColor(cat.variancePercent, type)}`}>
                           {formatCurrency(Math.abs(cat.variance))} ({cat.variancePercent > 0 ? '+' : ''}{cat.variancePercent}%)
                         </td>
                         <td className="px-4 py-2 text-center">{getStatusIcon(cat.variancePercent, type)}</td>
+                        {editMode && (
+                          <td className="px-4 py-2 text-center">
+                            {editingCategory === cat.id ? (
+                              <div className="flex gap-1 justify-center">
+                                <button
+                                  onClick={() => saveEdit(cat.id)}
+                                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => startEdit(cat.id, cat.budgeted)}
+                                className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -369,10 +459,15 @@ export default function Budget() {
             <option value="2025">2025 Annual Budget</option>
           </select>
           <button
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+            onClick={toggleEditMode}
+            className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm ${
+              editMode 
+                ? 'text-red-700 bg-red-50 border-red-300 hover:bg-red-100' 
+                : 'text-white bg-blue-600 border-transparent hover:bg-blue-700'
+            }`}
           >
             <PencilIcon className="h-5 w-5 mr-2" />
-            Edit Budget
+            {editMode ? 'Done Editing' : 'Edit Budget'}
           </button>
         </div>
       </div>
@@ -553,6 +648,7 @@ export default function Budget() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actual</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Variance</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    {editMode && <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -562,7 +658,21 @@ export default function Budget() {
                         {category.name}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {formatCurrency(category.budgeted)}
+                        {editingCategory === category.id ? (
+                          <input
+                            type="number"
+                            value={editValue}
+                            onChange={(e) => setEditValue(Number(e.target.value))}
+                            className="w-24 px-2 py-1 text-right border border-blue-400 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(category.id);
+                              if (e.key === 'Escape') cancelEdit();
+                            }}
+                          />
+                        ) : (
+                          formatCurrency(category.budgeted)
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {formatCurrency(category.actual)}
@@ -573,6 +683,33 @@ export default function Budget() {
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         {getStatusIcon(category.variancePercent, 'income')}
                       </td>
+                      {editMode && (
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          {editingCategory === category.id ? (
+                            <div className="flex gap-1 justify-center">
+                              <button
+                                onClick={() => saveEdit(category.id)}
+                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(category.id, category.budgeted)}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -621,6 +758,7 @@ export default function Budget() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actual</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Variance</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    {editMode && <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -630,7 +768,21 @@ export default function Budget() {
                         {category.name}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {formatCurrency(category.budgeted)}
+                        {editingCategory === category.id ? (
+                          <input
+                            type="number"
+                            value={editValue}
+                            onChange={(e) => setEditValue(Number(e.target.value))}
+                            className="w-24 px-2 py-1 text-right border border-blue-400 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(category.id);
+                              if (e.key === 'Escape') cancelEdit();
+                            }}
+                          />
+                        ) : (
+                          formatCurrency(category.budgeted)
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {formatCurrency(category.actual)}
@@ -641,6 +793,33 @@ export default function Budget() {
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         {getStatusIcon(category.variancePercent, 'expense')}
                       </td>
+                      {editMode && (
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          {editingCategory === category.id ? (
+                            <div className="flex gap-1 justify-center">
+                              <button
+                                onClick={() => saveEdit(category.id)}
+                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(category.id, category.budgeted)}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

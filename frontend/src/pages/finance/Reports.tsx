@@ -476,7 +476,7 @@ export default function ReportsPage() {
                       <tbody className="divide-y divide-gray-200">
                         {reportData.months.map((month: any) => (
                           <tr key={month.month}>
-                            <td>{month.month_name}</td>
+                            <td>{month.month}</td>
                             <td className="text-right text-green-600">{formatCurrency(month.income)}</td>
                             <td className="text-right text-red-600">{formatCurrency(month.expenses)}</td>
                             <td className={`text-right font-medium ${
