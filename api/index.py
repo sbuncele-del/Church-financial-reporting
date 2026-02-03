@@ -1,6 +1,6 @@
 """
 Vercel Serverless Function - Church SOLAR API with Neon PostgreSQL
-Version: 2.4.0 - Fixed database connection
+Version: 2.5.0 - Added POST handlers for income and expense entries
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -392,7 +392,7 @@ class handler(BaseHTTPRequestHandler):
             
             # Health/Root
             if path in ['', '/api', '/api/v1']:
-                self.send_json({"message": "Church SOLAR API", "version": "1.0.0", "status": "healthy", "database": "connected"})
+                self.send_json({"message": "Church SOLAR API", "version": "2.5.0", "status": "healthy", "database": "connected"})
             
             # SOLAR Dashboard
             elif path.startswith('/api/v1/solar/dashboard'):
