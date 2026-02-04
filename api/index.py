@@ -684,15 +684,10 @@ class handler(BaseHTTPRequestHandler):
                 church_id = query.get('church_id', ['1'])[0]
                 cur.execute("SELECT * FROM expense_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
-                if not categories:
-                    default_cats = [
-                        {'id': 1, 'name': 'Salaries', 'church_id': int(church_id), 'sort_order': 1},
-                        {'id': 2, 'name': 'Utilities', 'church_id': int(church_id), 'sort_order': 2},
-                        {'id': 3, 'name': 'Rent/Mortgage', 'church_id': int(church_id), 'sort_order': 3},
-                        {'id': 4, 'name': 'Ministry Expenses', 'church_id': int(church_id), 'sort_order': 4},
-                        {'id': 5, 'name': 'Maintenance', 'church_id': int(church_id), 'sort_order': 5},
-                    ]
-                    self.send_json(default_cats)
+                # If fewer than 10 categories, return comprehensive default list
+                if not categories or len(categories) < 10:
+                    # Return comprehensive expense categories from DEMO_DATA
+                    self.send_json(DEMO_DATA['expense_categories'])
                 else:
                     self.send_json([dict(c) for c in categories])
             
