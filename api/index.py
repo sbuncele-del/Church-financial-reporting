@@ -118,12 +118,12 @@ DEMO_DATA = {
     'next_expense_id': 3,
 }
 
-# Database connection
-_db_connection = None
+# Database connection - NOTE: Serverless functions should use fresh connections
 _db_error = None
 
 def get_db():
-    global _db_connection, _db_error
+    """Get a fresh database connection for each request"""
+    global _db_error
     db_url = get_database_url()
     if not db_url:
         _db_error = "No DATABASE_URL"
@@ -131,10 +131,11 @@ def get_db():
     try:
         import psycopg2
         import psycopg2.extras
-        if _db_connection is None or _db_connection.closed:
-            _db_connection = psycopg2.connect(db_url)
-            _db_error = None
-        return _db_connection
+        
+        # Create a fresh connection for each request (serverless best practice)
+        conn = psycopg2.connect(db_url)
+        _db_error = None
+        return conn
     except Exception as e:
         _db_error = str(e)
         print(f"Database connection error: {e}")
@@ -474,6 +475,19 @@ class handler(BaseHTTPRequestHandler):
                 members = cur.fetchall()
                 self.send_json({"members": [dict(m) for m in members], "total": len(members)})
             
+            # Members Summary (for dropdowns)
+            elif path == '/api/v1/members/summary':
+                user = self.get_auth_user()
+                church_id = user['church_id'] if user else query.get('church_id', ['1'])[0]
+                cur.execute("""
+                    SELECT id, first_name, last_name
+                    FROM members 
+                    WHERE church_id = %s AND member_status = 'active'
+                    ORDER BY last_name, first_name
+                """, (church_id,))
+                members = cur.fetchall()
+                self.send_json([dict(m) for m in members])
+            
             # List Churches
             elif path == '/api/v1/churches':
                 cur.execute("SELECT * FROM churches ORDER BY name")
@@ -715,9 +729,15 @@ class handler(BaseHTTPRequestHandler):
             conn.close()
             
         except Exception as e:
-            self.send_json({"error": str(e)}, 500)
-            if conn:
-                conn.close()
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"GET Error: {str(e)}\n{error_trace}")
+            self.send_json({"error": str(e), "trace": error_trace[:500]}, 500)
+            try:
+                if conn:
+                    conn.close()
+            except:
+                pass
     
     def do_POST(self):
         path = self.path.split('?')[0].rstrip('/')
@@ -896,6 +916,92 @@ class handler(BaseHTTPRequestHandler):
                 entry = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(entry))
+            
+            # Seed comprehensive expense categories for a church
+            elif path == '/api/v1/admin/seed-expense-categories':
+                church_id = data.get('church_id', 1)
+                
+                # Comprehensive expense categories for churches
+                comprehensive_categories = [
+                    # Personnel & Salaries (1-10)
+                    ('Senior Pastor Salary', 1),
+                    ('Associate Pastor Salary', 2),
+                    ('Staff Salaries', 3),
+                    ('Payroll Taxes & UIF', 4),
+                    ('Staff Benefits', 5),
+                    ('Housing Allowance', 6),
+                    ('Transport Allowance', 7),
+                    # Facilities (10-19)
+                    ('Rent/Mortgage', 10),
+                    ('Electricity', 11),
+                    ('Water & Rates', 12),
+                    ('Security', 13),
+                    ('Cleaning & Maintenance', 14),
+                    ('Repairs & Renovations', 15),
+                    ('Insurance', 16),
+                    ('Garden & Grounds', 17),
+                    # Office & Admin (20-29)
+                    ('Office Supplies', 20),
+                    ('Printing & Stationery', 21),
+                    ('Telephone & Internet', 22),
+                    ('Postage & Courier', 23),
+                    ('Bank Charges', 24),
+                    ('Accounting & Audit', 25),
+                    ('Legal Fees', 26),
+                    ('Software & Subscriptions', 27),
+                    # Ministry Departments (30-39)
+                    ('Youth Ministry Expenses', 30),
+                    ('Children Ministry Expenses', 31),
+                    ('Women Ministry Expenses', 32),
+                    ('Men Ministry Expenses', 33),
+                    ('Small Groups & Cell Ministry', 34),
+                    ('Discipleship & Training', 35),
+                    # Worship & Media (40-49)
+                    ('Worship Equipment', 40),
+                    ('Sound & AV Equipment', 41),
+                    ('Music Licensing (CCLI)', 42),
+                    ('Livestream & Media', 43),
+                    ('Website & Social Media', 44),
+                    # Outreach & Missions (50-59)
+                    ('Missions Support', 50),
+                    ('Outreach Programs', 51),
+                    ('Evangelism Materials', 52),
+                    ('Community Projects', 53),
+                    # Benevolence (60-69)
+                    ('Benevolence - Members', 60),
+                    ('Benevolence - Community', 61),
+                    ('Funeral Assistance', 62),
+                    ('Food Parcels & Relief', 63),
+                    # Events (70-79)
+                    ('Church Events', 70),
+                    ('Conferences & Seminars', 71),
+                    ('Hospitality & Catering', 72),
+                    ('Guest Speakers', 73),
+                    # Transport & Travel (80-89)
+                    ('Vehicle Expenses', 80),
+                    ('Fuel', 81),
+                    ('Travel & Accommodation', 82),
+                    # Miscellaneous (90-99)
+                    ('Denominational Dues', 90),
+                    ('Books & Resources', 91),
+                    ('Miscellaneous Expenses', 99),
+                ]
+                
+                # Clear existing categories for this church
+                cur.execute("DELETE FROM expense_categories WHERE church_id = %s", (church_id,))
+                
+                # Insert new categories
+                for name, sort_order in comprehensive_categories:
+                    cur.execute("""
+                        INSERT INTO expense_categories (name, church_id, sort_order)
+                        VALUES (%s, %s, %s)
+                    """, (name, church_id, sort_order))
+                
+                conn.commit()
+                self.send_json({
+                    "message": f"Seeded {len(comprehensive_categories)} expense categories for church {church_id}",
+                    "count": len(comprehensive_categories)
+                })
             
             else:
                 self.send_json({"error": "Not found", "path": path}, 404)

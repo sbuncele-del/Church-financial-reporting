@@ -55,7 +55,7 @@ export default function Register() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-2">Create an account</h2>
-      <p className="text-gray-600 mb-6">Get started with your church management system</p>
+      <p className="text-gray-600 mb-6">Get started with church financial management</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">

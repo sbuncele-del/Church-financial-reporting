@@ -176,7 +176,7 @@ export default function IncomePage() {
                     <td className="font-semibold text-green-600">
                       {formatCurrency(income.amount)}
                     </td>
-                    <td className="capitalize">{income.payment_method.replace('_', ' ')}</td>
+                    <td className="capitalize">{(income.payment_method || 'cash').replace('_', ' ')}</td>
                     <td>
                       <div className="flex items-center gap-2">
                         <button

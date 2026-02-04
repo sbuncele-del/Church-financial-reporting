@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/authStore'
 import DashboardLayout from './layouts/DashboardLayout'
 import AuthLayout from './layouts/AuthLayout'
 import Landing from './pages/Landing'
+import About from './pages/About'
 
 // Auth Pages
 import Login from './pages/auth/Login'
@@ -124,6 +125,9 @@ function App() {
       <Route path="/" element={
         <PublicRoute><Landing /></PublicRoute>
       } />
+
+      {/* About SOLAR - public page */}
+      <Route path="/about" element={<About />} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

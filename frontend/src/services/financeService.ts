@@ -21,9 +21,9 @@ const getChurchId = (): number => {
 
 export const financeService = {
   // Income Categories
-  async getIncomeCategories(): Promise<IncomeCategory[]> {
+  async getIncomeCategories(churchId?: number): Promise<IncomeCategory[]> {
     const response = await api.get<IncomeCategory[]>('/finance/income-categories', {
-      params: { church_id: getChurchId() }
+      params: { church_id: churchId || getChurchId() }
     });
     return response.data;
   },
@@ -34,8 +34,10 @@ export const financeService = {
   },
 
   // Expense Categories
-  async getExpenseCategories(): Promise<ExpenseCategory[]> {
-    const response = await api.get<ExpenseCategory[]>('/finance/expense-categories');
+  async getExpenseCategories(churchId?: number): Promise<ExpenseCategory[]> {
+    const response = await api.get<ExpenseCategory[]>('/finance/expense-categories', {
+      params: { church_id: churchId || getChurchId() }
+    });
     return response.data;
   },
 
@@ -53,10 +55,23 @@ export const financeService = {
     category_id?: number;
     member_id?: number;
   }): Promise<IncomeListResponse> {
-    const response = await api.get<IncomeListResponse>('/finance/income', { 
+    const response = await api.get('/finance/income', { 
       params: { ...params, church_id: getChurchId() } 
     });
-    return response.data;
+    // API returns plain array, convert to expected format
+    const data = response.data;
+    if (Array.isArray(data)) {
+      const incomes = data as Income[];
+      const totalAmount = incomes.reduce((sum, inc) => sum + (parseFloat(String(inc.amount)) || 0), 0);
+      return {
+        incomes,
+        total: incomes.length,
+        total_amount: totalAmount,
+        page: 1,
+        per_page: params?.per_page || 50,
+      };
+    }
+    return data;
   },
 
   async getIncome(id: number): Promise<Income> {
@@ -90,8 +105,23 @@ export const financeService = {
     category_id?: number;
     is_approved?: boolean;
   }): Promise<ExpenseListResponse> {
-    const response = await api.get<ExpenseListResponse>('/finance/expenses', { params });
-    return response.data;
+    const response = await api.get('/finance/expenses', { 
+      params: { ...params, church_id: getChurchId() } 
+    });
+    // API returns plain array, convert to expected format
+    const data = response.data;
+    if (Array.isArray(data)) {
+      const expenses = data as Expense[];
+      const totalAmount = expenses.reduce((sum, exp) => sum + (parseFloat(String(exp.amount)) || 0), 0);
+      return {
+        expenses,
+        total: expenses.length,
+        total_amount: totalAmount,
+        page: 1,
+        per_page: params?.per_page || 50,
+      };
+    }
+    return data;
   },
 
   async getExpense(id: number): Promise<Expense> {
@@ -120,9 +150,9 @@ export const financeService = {
   },
 
   // Summary
-  async getSummary(startDate: string, endDate: string): Promise<FinancialSummary> {
+  async getSummary(startDate: string, endDate: string, churchId?: number): Promise<FinancialSummary> {
     const response = await api.get<FinancialSummary>('/finance/summary', {
-      params: { start_date: startDate, end_date: endDate }
+      params: { start_date: startDate, end_date: endDate, church_id: churchId || getChurchId() }
     });
     return response.data;
   },

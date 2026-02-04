@@ -124,7 +124,7 @@ const emptySOLARData = {
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [solarData, setSolarData] = useState(emptySOLARData);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSOLARData = async () => {

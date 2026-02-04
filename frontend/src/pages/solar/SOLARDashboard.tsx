@@ -18,53 +18,117 @@ import {
   getGradeColor,
   getTrendIcon,
 } from '../../types/solar';
+import { useAuthStore } from '../../stores/authStore';
 
-// Mock data for demonstration
-const mockDashboardData: SOLARDashboardData = {
-  churchId: 1,
-  churchName: 'Grace Community Church',
-  assessmentPeriod: 'Q1 2026',
-  assessmentDate: '2026-01-15',
-  overallScore: 72.5,
-  overallGrade: 'B',
+// Empty initial state - no mock data
+const emptyDashboardData: SOLARDashboardData = {
+  churchId: 0,
+  churchName: '',
+  assessmentPeriod: 'Not assessed',
+  assessmentDate: '',
+  overallScore: 0,
+  overallGrade: 'N/A',
   dimensions: [
-    { dimension: 'S', name: 'Spiritual Vitality', score: 78, grade: 'B+', icon: '🙏', color: '#8B5CF6', trend: 'improving', change: 3.5 },
-    { dimension: 'O', name: 'Organisational Governance', score: 72, grade: 'B', icon: '🏛️', color: '#3B82F6', trend: 'stable', change: 0.5 },
-    { dimension: 'L', name: 'Love & Care', score: 80, grade: 'B+', icon: '❤️', color: '#EF4444', trend: 'improving', change: 2.0 },
-    { dimension: 'A', name: 'Advancement', score: 65, grade: 'C+', icon: '🚀', color: '#10B981', trend: 'improving', change: 5.0 },
-    { dimension: 'R', name: 'Resources', score: 70, grade: 'B-', icon: '💰', color: '#F59E0B', trend: 'stable', change: 1.0 },
+    { dimension: 'S', name: 'Spiritual Vitality', score: 0, grade: 'N/A', icon: '🙏', color: '#8B5CF6', trend: 'stable', change: 0 },
+    { dimension: 'O', name: 'Organisational Governance', score: 0, grade: 'N/A', icon: '🏛️', color: '#3B82F6', trend: 'stable', change: 0 },
+    { dimension: 'L', name: 'Love & Care', score: 0, grade: 'N/A', icon: '❤️', color: '#EF4444', trend: 'stable', change: 0 },
+    { dimension: 'A', name: 'Advancement', score: 0, grade: 'N/A', icon: '🚀', color: '#10B981', trend: 'stable', change: 0 },
+    { dimension: 'R', name: 'Resources', score: 0, grade: 'N/A', icon: '💰', color: '#F59E0B', trend: 'stable', change: 0 },
   ],
-  topStrengths: [
-    'Strong worship culture with high engagement',
-    'Active family group system',
-    'Healthy organizational culture',
-  ],
-  priorityImprovements: [
-    'Digital mission and media influence',
-    'Investment strategy for sustainability',
-    'New believer integration process',
-  ],
+  topStrengths: [],
+  priorityImprovements: [],
   benchmarkComparison: {
-    S: 70,
-    O: 68,
-    L: 75,
-    A: 65,
-    R: 72,
+    S: 0,
+    O: 0,
+    L: 0,
+    A: 0,
+    R: 0,
   },
 };
 
 export default function SOLARDashboard() {
-  const [dashboardData, setDashboardData] = useState<SOLARDashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<SOLARDashboardData>(emptyDashboardData);
   const [loading, setLoading] = useState(true);
   const [selectedDimension, setSelectedDimension] = useState<SOLARDimension | null>(null);
+  const [hasAssessment, setHasAssessment] = useState(false);
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDashboardData(mockDashboardData);
-      setLoading(false);
-    }, 500);
-  }, []);
+    const fetchDashboardData = async () => {
+      try {
+        const churchId = user?.church_id || 1;
+        const response = await fetch(`/api/v1/solar/dashboard/${churchId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch SOLAR data');
+        }
+        
+        const data = await response.json();
+        
+        // Map API response to expected format
+        const dimensionIcons: Record<string, string> = {
+          S: '🙏', O: '🏛️', L: '❤️', A: '🚀', R: '💰'
+        };
+        const dimensionColors: Record<string, string> = {
+          S: '#8B5CF6', O: '#3B82F6', L: '#EF4444', A: '#10B981', R: '#F59E0B'
+        };
+        
+        // Transform dimensions if returned as array or object
+        let dimensions: DimensionScore[] = [];
+        if (Array.isArray(data.dimensions)) {
+          dimensions = data.dimensions.map((dim: any) => ({
+            dimension: dim.dimension || dim.key,
+            name: dim.name || (SOLAR_DIMENSIONS[dim.dimension as SOLARDimension]?.fullName) || dim.dimension,
+            score: dim.score || 0,
+            grade: dim.grade || 'N/A',
+            icon: dimensionIcons[dim.dimension] || '📊',
+            color: dimensionColors[dim.dimension] || '#6B7280',
+            trend: dim.trend || 'stable',
+            change: dim.change || 0,
+          }));
+        } else if (data.dimension_scores) {
+          // Handle object format from API
+          dimensions = Object.entries(data.dimension_scores).map(([key, value]: [string, any]) => ({
+            dimension: key as SOLARDimension,
+            name: value.name || SOLAR_DIMENSIONS[key as SOLARDimension]?.fullName || key,
+            score: value.score || 0,
+            grade: value.grade || 'N/A',
+            icon: dimensionIcons[key] || '📊',
+            color: value.color || dimensionColors[key] || '#6B7280',
+            trend: value.trend || 'stable',
+            change: value.change || 0,
+          }));
+        } else {
+          // Use empty dimensions if no data
+          dimensions = emptyDashboardData.dimensions;
+        }
+        
+        // Check if there's any real data
+        const hasData = dimensions.some((d) => d.score > 0);
+        setHasAssessment(hasData);
+        
+        setDashboardData({
+          churchId: data.church_id || churchId,
+          churchName: data.church_name || 'Your Church',
+          assessmentPeriod: data.assessment_period || 'Not assessed',
+          assessmentDate: data.assessment_date || '',
+          overallScore: data.overall_score || 0,
+          overallGrade: data.overall_grade || 'N/A',
+          dimensions,
+          topStrengths: data.strengths || data.top_strengths || [],
+          priorityImprovements: data.improvements || data.priority_improvements || [],
+          benchmarkComparison: data.benchmark_comparison || emptyDashboardData.benchmarkComparison,
+        });
+      } catch (error) {
+        console.error('Failed to fetch SOLAR dashboard data:', error);
+        setHasAssessment(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
 
   if (loading) {
     return (
@@ -74,11 +138,24 @@ export default function SOLARDashboard() {
     );
   }
 
-  if (!dashboardData) {
+  if (!hasAssessment) {
     return (
       <div className="p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">No assessment data available. Create your first SOLAR assessment to get started.</p>
+        <div className="bg-white rounded-xl shadow p-12 text-center max-w-2xl mx-auto">
+          <div className="text-6xl mb-6">⛪</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">No SOLAR Assessment Yet</h2>
+          <p className="text-gray-600 mb-8">
+            Complete your first SOLAR assessment to measure your church's health across the five key dimensions:
+            Spiritual Vitality, Organisational Governance, Love & Care, Advancement, and Resources.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            {['🙏 Spiritual', '🏛️ Governance', '❤️ Love & Care', '🚀 Advancement', '💰 Resources'].map((dim) => (
+              <span key={dim} className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">{dim}</span>
+            ))}
+          </div>
+          <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+            Start First Assessment
+          </button>
         </div>
       </div>
     );

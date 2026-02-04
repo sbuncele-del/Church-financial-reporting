@@ -12,7 +12,7 @@ export default function AuthLayout() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white">Church Management</h1>
-          <p className="text-primary-200 mt-1">Manage your church operations with ease</p>
+          <p className="text-primary-200 mt-1">Church management made simple</p>
         </div>
         
         {/* Auth Card */}

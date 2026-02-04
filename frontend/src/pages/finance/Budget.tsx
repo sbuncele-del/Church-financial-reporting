@@ -4,135 +4,80 @@ import {
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  PencilIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency } from '../../utils/currency';
 import { financeService } from '../../services/financeService';
+import { useAuthStore } from '../../stores/authStore';
 
-interface BudgetCategory {
-  id: string;
-  name: string;
+interface BudgetItem {
+  id: number;
+  category_id: number;
+  category_name: string;
   budgeted: number;
   actual: number;
   variance: number;
-  variancePercent: number;
   type: 'income' | 'expense';
-  group?: string;
 }
-
-interface CategoryGroup {
-  name: string;
-  categories: BudgetCategory[];
-  totalBudgeted: number;
-  totalActual: number;
-}
-
-// Income category groups mapping (aligned with API categories)
-const INCOME_GROUPS: Record<string, string[]> = {
-  'Tithes & Seeds': ['Tithes', 'First Fruits', 'Regular Seed', 'Alms', 'Special Seed', 'Offerings', 'Thanksgiving Offering', 'Love Offering'],
-  'Ministry Specific': ['Building Fund', 'Missions', 'Youth Ministry', 'Children Ministry', 'Women Ministry', 'Men Ministry', 'Worship & Music Ministry', 'Outreach & Evangelism'],
-  'Welfare & Support': ['Benevolence Fund', 'Funeral Fund', 'Sick Fund', 'Community Support'],
-  'Events & Programs': ['Special Events', 'Conferences & Seminars', 'Camp Registration', 'Marriage Ceremony Fees'],
-  'Other Income': ['Rental Income', 'Interest Income', 'Bookshop Sales', 'Donations - General', 'Grants Received', 'Other Income'],
-};
-
-// Expense category groups mapping (aligned with API categories)
-const EXPENSE_GROUPS: Record<string, string[]> = {
-  'Personnel & Salaries': ['Senior Pastor Salary', 'Associate Pastor Salary', 'Staff Salaries', 'Payroll Taxes & UIF', 'Staff Benefits', 'Housing Allowance', 'Transport Allowance'],
-  'Facilities': ['Rent/Mortgage', 'Electricity', 'Water & Rates', 'Security', 'Cleaning & Maintenance', 'Repairs & Renovations', 'Insurance', 'Garden & Grounds'],
-  'Administration': ['Office Supplies', 'Printing & Stationery', 'Telephone & Internet', 'Postage & Courier', 'Bank Charges', 'Accounting & Audit', 'Legal Fees', 'Software & Subscriptions'],
-  'Ministry Programs': ['Youth Ministry Expenses', 'Children Ministry Expenses', 'Women Ministry Expenses', 'Men Ministry Expenses', 'Small Groups & Cell Ministry', 'Discipleship & Training'],
-  'Worship & Media': ['Worship Equipment', 'Sound & AV Equipment', 'Music Licensing (CCLI)', 'Livestream & Media', 'Website & Social Media'],
-  'Outreach & Missions': ['Missions Support', 'Outreach Programs', 'Evangelism Materials', 'Community Projects'],
-  'Welfare & Benevolence': ['Benevolence - Members', 'Benevolence - Community', 'Funeral Assistance', 'Food Parcels & Relief'],
-  'Events & Hospitality': ['Church Events', 'Conferences & Seminars', 'Hospitality & Catering', 'Guest Speakers'],
-  'Transport & Travel': ['Vehicle Expenses', 'Fuel', 'Travel & Accommodation'],
-  'Other': ['Denominational Dues', 'Books & Resources', 'Miscellaneous Expenses'],
-};
 
 export default function Budget() {
   const [loading, setLoading] = useState(true);
-  const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('2026');
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
-  const [editMode, setEditMode] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<number>(0);
-  const [newItem, setNewItem] = useState({
-    name: '',
-    type: 'income' as 'income' | 'expense',
-    budgeted: 0,
-    actual: 0,
-  });
+  const [incomeItems, setIncomeItems] = useState<BudgetItem[]>([]);
+  const [expenseItems, setExpenseItems] = useState<BudgetItem[]>([]);
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const { user } = useAuthStore();
+  const churchId = user?.church_id || 1;
 
   useEffect(() => {
     loadBudgetData();
-  }, [selectedPeriod]);
+  }, [selectedYear, churchId]);
 
   const loadBudgetData = async () => {
     setLoading(true);
     try {
-      // Fetch categories through the shared finance service (respects base URL / auth)
-      const [incomeCategories, expenseCategories] = await Promise.all([
-        financeService.getIncomeCategories().catch(() => []),
-        financeService.getExpenseCategories().catch(() => []),
+      // Get date range for the selected year
+      const startDate = `${selectedYear}-01-01`;
+      const endDate = `${selectedYear}-12-31`;
+
+      // Fetch real data from API
+      const [incomeCategories, expenseCategories, financeSummary] = await Promise.all([
+        financeService.getIncomeCategories(churchId),
+        financeService.getExpenseCategories(churchId),
+        financeService.getSummary(startDate, endDate, churchId),
       ]);
 
-      // Build budget categories with realistic sample data
-      const categories: BudgetCategory[] = [];
-      
-      // Generate budget for each income category
-      incomeCategories.forEach((cat: any, index: number) => {
-        const budgeted = getBudgetAmount(cat.name, 'income');
-        const actual = Math.round(budgeted * (0.85 + Math.random() * 0.3)); // 85-115% of budget
-        const variance = actual - budgeted;
-        const variancePercent = budgeted > 0 ? (variance / budgeted) * 100 : 0;
-        const group = Object.entries(INCOME_GROUPS).find(([_, cats]) => cats.includes(cat.name))?.[0] || 'Other';
-        
-        categories.push({
-          id: `income-${cat.id || index}`,
-          name: cat.name,
-          budgeted,
+      // Build income items with actual amounts from summary
+      const incomeByCategory = financeSummary?.income_by_category || {};
+      const incomeData: BudgetItem[] = incomeCategories.map((cat: any) => {
+        const actual = incomeByCategory[cat.name] || 0;
+        return {
+          id: cat.id,
+          category_id: cat.id,
+          category_name: cat.name,
+          budgeted: 0,
           actual,
-          variance,
-          variancePercent: Math.round(variancePercent * 10) / 10,
-          type: 'income',
-          group,
-        });
+          variance: actual,
+          type: 'income' as const,
+        };
       });
 
-      // Generate budget for each expense category
-      expenseCategories.forEach((cat: any, index: number) => {
-        const budgeted = getBudgetAmount(cat.name, 'expense');
-        const actual = Math.round(budgeted * (0.75 + Math.random() * 0.4)); // 75-115% of budget
-        const variance = budgeted - actual; // For expenses, under budget is positive
-        const variancePercent = budgeted > 0 ? (variance / budgeted) * 100 : 0;
-        const group = Object.entries(EXPENSE_GROUPS).find(([_, cats]) => cats.includes(cat.name))?.[0] || 'Other';
-        
-        categories.push({
-          id: `expense-${cat.id || index}`,
-          name: cat.name,
-          budgeted,
+      // Build expense items with actual amounts from summary
+      const expensesByCategory = financeSummary?.expenses_by_category || {};
+      const expenseData: BudgetItem[] = expenseCategories.map((cat: any) => {
+        const actual = expensesByCategory[cat.name] || 0;
+        return {
+          id: cat.id,
+          category_id: cat.id,
+          category_name: cat.name,
+          budgeted: 0,
           actual,
-          variance,
-          variancePercent: Math.round(variancePercent * 10) / 10,
-          type: 'expense',
-          group,
-        });
+          variance: -actual,
+          type: 'expense' as const,
+        };
       });
 
-      setBudgetCategories(categories);
-      
-      // Expand first groups by default
-      const defaultExpanded: Record<string, boolean> = {};
-      Object.keys(INCOME_GROUPS).slice(0, 2).forEach(g => defaultExpanded[`income-${g}`] = true);
-      Object.keys(EXPENSE_GROUPS).slice(0, 2).forEach(g => defaultExpanded[`expense-${g}`] = true);
-      setExpandedGroups(defaultExpanded);
+      setIncomeItems(incomeData);
+      setExpenseItems(expenseData);
     } catch (error) {
       console.error('Failed to load budget data:', error);
     } finally {
@@ -140,773 +85,153 @@ export default function Budget() {
     }
   };
 
-  // Generate realistic budget amounts based on category name
-  const getBudgetAmount = (name: string, type: 'income' | 'expense'): number => {
-    if (type === 'income') {
-      if (name === 'Tithes') return 180000;
-      if (name === 'First Fruits') return 25000;
-      if (name === 'Regular Seed') return 30000;
-      if (name === 'Special Seed') return 40000;
-      if (name === 'Alms') return 15000;
-      if (name === 'Offerings') return 85000;
-      if (name === 'Building Fund') return 45000;
-      if (name === 'Missions') return 20000;
-      if (name.includes('Ministry')) return 8000;
-      if (name.includes('Fund')) return 12000;
-      if (name.includes('Events') || name.includes('Conference')) return 15000;
-      return 5000;
-    } else {
-      if (name.includes('Senior Pastor')) return 96000;
-      if (name.includes('Associate Pastor')) return 72000;
-      if (name.includes('Staff Salaries')) return 120000;
-      if (name.includes('Rent') || name.includes('Mortgage')) return 48000;
-      if (name.includes('Electricity')) return 24000;
-      if (name.includes('Security')) return 18000;
-      if (name.includes('Insurance')) return 12000;
-      if (name.includes('Ministry Expenses')) return 15000;
-      if (name.includes('Missions')) return 24000;
-      if (name.includes('Events') || name.includes('Conference')) return 20000;
-      if (name.includes('Equipment')) return 8000;
-      return 6000;
-    }
-  };
+  const totalActualIncome = incomeItems.reduce((sum, item) => sum + item.actual, 0);
+  const totalActualExpenses = expenseItems.reduce((sum, item) => sum + item.actual, 0);
+  const netPosition = totalActualIncome - totalActualExpenses;
 
-  const toggleGroup = (groupKey: string) => {
-    setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
-  };
-
-  const addCustomItem = () => {
-    if (!newItem.name.trim()) return;
-    const variance = newItem.type === 'income'
-      ? newItem.actual - newItem.budgeted
-      : newItem.budgeted - newItem.actual;
-    const variancePercent = newItem.budgeted > 0
-      ? (variance / newItem.budgeted) * 100
-      : 0;
-    const item: BudgetCategory = {
-      id: `custom-${Date.now()}`,
-      name: newItem.name.trim(),
-      budgeted: newItem.budgeted,
-      actual: newItem.actual,
-      variance,
-      variancePercent: Math.round(variancePercent * 10) / 10,
-      type: newItem.type,
-      group: 'Custom Items'
-    };
-    setBudgetCategories(prev => [...prev, item]);
-    setExpandedGroups(prev => ({ ...prev, [`${newItem.type}-Custom Items`]: true }));
-    setNewItem({ name: '', type: 'income', budgeted: 0, actual: 0 });
-  };
-
-  // Start editing a budget category
-  const startEdit = (categoryId: string, currentBudgeted: number) => {
-    setEditingCategory(categoryId);
-    setEditValue(currentBudgeted);
-  };
-
-  // Save the edited budget amount
-  const saveEdit = (categoryId: string) => {
-    setBudgetCategories(prev => prev.map(cat => {
-      if (cat.id === categoryId) {
-        const newBudgeted = editValue;
-        const variance = cat.type === 'income'
-          ? cat.actual - newBudgeted
-          : newBudgeted - cat.actual;
-        const variancePercent = newBudgeted > 0 ? (variance / newBudgeted) * 100 : 0;
-        return {
-          ...cat,
-          budgeted: newBudgeted,
-          variance,
-          variancePercent: Math.round(variancePercent * 10) / 10,
-        };
-      }
-      return cat;
-    }));
-    setEditingCategory(null);
-    setEditValue(0);
-  };
-
-  // Cancel editing
-  const cancelEdit = () => {
-    setEditingCategory(null);
-    setEditValue(0);
-  };
-
-  // Toggle edit mode for the whole page
-  const toggleEditMode = () => {
-    setEditMode(!editMode);
-    if (editMode) {
-      // Exiting edit mode - cancel any current edit
-      cancelEdit();
-    }
-  };
-
-  const incomeCategories = budgetCategories.filter(c => c.type === 'income');
-  const expenseCategories = budgetCategories.filter(c => c.type === 'expense');
-
-  const totalBudgetedIncome = incomeCategories.reduce((sum, c) => sum + c.budgeted, 0);
-  const totalActualIncome = incomeCategories.reduce((sum, c) => sum + c.actual, 0);
-  const totalBudgetedExpenses = expenseCategories.reduce((sum, c) => sum + c.budgeted, 0);
-  const totalActualExpenses = expenseCategories.reduce((sum, c) => sum + c.actual, 0);
-
-  const netBudgeted = totalBudgetedIncome - totalBudgetedExpenses;
-  const netActual = totalActualIncome - totalActualExpenses;
-
-  // Group categories by their group name
-  const groupCategories = (categories: BudgetCategory[], groups: Record<string, string[]>): CategoryGroup[] => {
-    return Object.keys(groups).map(groupName => {
-      const groupCats = categories.filter(c => c.group === groupName);
-      return {
-        name: groupName,
-        categories: groupCats,
-        totalBudgeted: groupCats.reduce((sum, c) => sum + c.budgeted, 0),
-        totalActual: groupCats.reduce((sum, c) => sum + c.actual, 0),
-      };
-    }).filter(g => g.categories.length > 0);
-  };
-
-  const incomeGroups = groupCategories(incomeCategories, INCOME_GROUPS);
-  const expenseGroups = groupCategories(expenseCategories, EXPENSE_GROUPS);
-
-  const getStatusIcon = (variancePercent: number, type: 'income' | 'expense') => {
-    const isPositive = type === 'income' ? variancePercent >= 0 : variancePercent > 0;
-    if (Math.abs(variancePercent) < 5) {
-      return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-    } else if (isPositive) {
-      return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-    } else {
-      return <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />;
-    }
-  };
-
-  const getVarianceColor = (variancePercent: number, type: 'income' | 'expense') => {
-    const isPositive = type === 'income' ? variancePercent >= 0 : variancePercent > 0;
-    if (Math.abs(variancePercent) < 5) return 'text-gray-600';
-    return isPositive ? 'text-green-600' : 'text-red-600';
-  };
-
-  const renderGroupedTable = (groups: CategoryGroup[], type: 'income' | 'expense') => {
-    const bgColor = type === 'income' ? 'bg-green-50' : 'bg-red-50';
-    const headerColor = type === 'income' ? 'text-green-800' : 'text-red-800';
-    const borderColor = type === 'income' ? 'border-green-200' : 'border-red-200';
-    
-    return (
-      <div className="space-y-2">
-        {groups.map(group => {
-          const groupKey = `${type}-${group.name}`;
-          const isExpanded = expandedGroups[groupKey];
-          const groupVariance = type === 'income' 
-            ? group.totalActual - group.totalBudgeted 
-            : group.totalBudgeted - group.totalActual;
-          const groupVariancePercent = group.totalBudgeted > 0 
-            ? (groupVariance / group.totalBudgeted) * 100 
-            : 0;
-          
-          return (
-            <div key={groupKey} className={`border ${borderColor} rounded-lg overflow-hidden`}>
-              {/* Group Header */}
-              <button
-                onClick={() => toggleGroup(groupKey)}
-                className={`w-full ${bgColor} px-4 py-3 flex items-center justify-between hover:opacity-90 transition-opacity`}
-              >
-                <div className="flex items-center gap-2">
-                  {isExpanded ? (
-                    <ChevronUpIcon className="h-4 w-4 text-gray-500" />
-                  ) : (
-                    <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-                  )}
-                  <span className={`font-semibold ${headerColor}`}>{group.name}</span>
-                  <span className="text-xs text-gray-500">({group.categories.length} categories)</span>
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="text-gray-600">Budget: {formatCurrency(group.totalBudgeted)}</span>
-                  <span className="text-gray-800 font-medium">Actual: {formatCurrency(group.totalActual)}</span>
-                  <span className={getVarianceColor(groupVariancePercent, type)}>
-                    {groupVariancePercent >= 0 ? '+' : ''}{groupVariancePercent.toFixed(1)}%
-                  </span>
-                </div>
-              </button>
-              
-              {/* Group Categories */}
-              {isExpanded && (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Budgeted</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actual</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Variance</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                      {editMode && <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {group.categories.map(cat => (
-                      <tr key={cat.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-900">{cat.name}</td>
-                        <td className="px-4 py-2 text-sm text-gray-500 text-right">
-                          {editingCategory === cat.id ? (
-                            <input
-                              type="number"
-                              value={editValue}
-                              onChange={(e) => setEditValue(Number(e.target.value))}
-                              className="w-24 px-2 py-1 text-right border border-blue-400 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveEdit(cat.id);
-                                if (e.key === 'Escape') cancelEdit();
-                              }}
-                            />
-                          ) : (
-                            formatCurrency(cat.budgeted)
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-right font-medium">{formatCurrency(cat.actual)}</td>
-                        <td className={`px-4 py-2 text-sm text-right ${getVarianceColor(cat.variancePercent, type)}`}>
-                          {formatCurrency(Math.abs(cat.variance))} ({cat.variancePercent > 0 ? '+' : ''}{cat.variancePercent}%)
-                        </td>
-                        <td className="px-4 py-2 text-center">{getStatusIcon(cat.variancePercent, type)}</td>
-                        {editMode && (
-                          <td className="px-4 py-2 text-center">
-                            {editingCategory === cat.id ? (
-                              <div className="flex gap-1 justify-center">
-                                <button
-                                  onClick={() => saveEdit(cat.id)}
-                                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={cancelEdit}
-                                  className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => startEdit(cat.id, cat.budgeted)}
-                                className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                              >
-                                Edit
-                              </button>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  const activeIncomeItems = incomeItems.filter(item => item.actual > 0);
+  const activeExpenseItems = expenseItems.filter(item => item.actual > 0);
+  const hasData = activeIncomeItems.length > 0 || activeExpenseItems.length > 0;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Budget Management</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track and manage church financial budgets across {incomeCategories.length} income and {expenseCategories.length} expense categories
+          <h1 className="text-2xl font-bold text-gray-900">Budget & Actuals</h1>
+          <p className="text-gray-600">Track financial performance against budget</p>
+        </div>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="input w-32"
+        >
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Income</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(totalActualIncome)}</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Expenses</p>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(totalActualExpenses)}</p>
+            </div>
+            <div className="p-3 bg-red-100 rounded-full">
+              <ArrowTrendingDownIcon className="h-6 w-6 text-red-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Net Position</p>
+              <p className={`text-2xl font-bold ${netPosition >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                {formatCurrency(netPosition)}
+              </p>
+            </div>
+            <div className={`p-3 rounded-full ${netPosition >= 0 ? 'bg-blue-100' : 'bg-orange-100'}`}>
+              <CurrencyDollarIcon className={`h-6 w-6 ${netPosition >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {!hasData ? (
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <ChartBarIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Financial Data Yet</h3>
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            Start recording income and expenses to see your budget performance here.
           </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex rounded-md shadow-sm">
-            <button
-              onClick={() => setViewMode('grouped')}
-              className={`px-4 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === 'grouped' 
-                  ? 'bg-blue-600 text-white border-blue-600' 
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              Grouped
-            </button>
-            <button
-              onClick={() => setViewMode('flat')}
-              className={`px-4 py-2 text-sm font-medium rounded-r-md border-t border-b border-r ${
-                viewMode === 'flat' 
-                  ? 'bg-blue-600 text-white border-blue-600' 
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              All Categories
-            </button>
-          </div>
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="2026">2026 Annual Budget</option>
-            <option value="2026-Q1">Q1 2026</option>
-            <option value="2026-Q2">Q2 2026</option>
-            <option value="2026-Q3">Q3 2026</option>
-            <option value="2026-Q4">Q4 2026</option>
-            <option value="2025">2025 Annual Budget</option>
-          </select>
-          <button
-            onClick={toggleEditMode}
-            className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm ${
-              editMode 
-                ? 'text-red-700 bg-red-50 border-red-300 hover:bg-red-100' 
-                : 'text-white bg-blue-600 border-transparent hover:bg-blue-700'
-            }`}
-          >
-            <PencilIcon className="h-5 w-5 mr-2" />
-            {editMode ? 'Done Editing' : 'Edit Budget'}
-          </button>
-        </div>
-      </div>
-
-      {/* Quick add custom budget item */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col gap-3">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col">
-            <label className="text-xs font-semibold text-gray-600">Name</label>
-            <input
-              value={newItem.name}
-              onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
-              className="border rounded-md px-3 py-2 text-sm"
-              placeholder="e.g. Youth Camp"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-xs font-semibold text-gray-600">Type</label>
-            <select
-              value={newItem.type}
-              onChange={(e) => setNewItem(prev => ({ ...prev, type: e.target.value as 'income' | 'expense' }))}
-              className="border rounded-md px-3 py-2 text-sm"
-            >
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-          </div>
-          <div className="flex flex-col">
-            <label className="text-xs font-semibold text-gray-600">Budgeted</label>
-            <input
-              type="number"
-              value={newItem.budgeted}
-              onChange={(e) => setNewItem(prev => ({ ...prev, budgeted: Number(e.target.value) }))}
-              className="border rounded-md px-3 py-2 text-sm"
-              min="0"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-xs font-semibold text-gray-600">Actual</label>
-            <input
-              type="number"
-              value={newItem.actual}
-              onChange={(e) => setNewItem(prev => ({ ...prev, actual: Number(e.target.value) }))}
-              className="border rounded-md px-3 py-2 text-sm"
-              min="0"
-            />
-          </div>
-          <button
-            onClick={addCustomItem}
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
-          >
-            Add Item
-          </button>
-        </div>
-        <p className="text-xs text-gray-500">Custom items show under “Custom Items” group.</p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ArrowTrendingUpIcon className="h-6 w-6 text-green-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Budgeted Income</dt>
-                  <dd className="text-lg font-semibold text-gray-900">{formatCurrency(totalBudgetedIncome)}</dd>
-                </dl>
-              </div>
-            </div>
-            <div className="mt-2">
-              <span className="text-sm text-gray-500">Actual: </span>
-              <span className={`text-sm font-medium ${totalActualIncome >= totalBudgetedIncome ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(totalActualIncome)}
-              </span>
-            </div>
+          <div className="flex justify-center gap-4">
+            <a href="/solar/resources/financial/income" className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              <PlusIcon className="h-5 w-5" />
+              Record Income
+            </a>
+            <a href="/solar/resources/financial/expenses" className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+              <PlusIcon className="h-5 w-5" />
+              Record Expense
+            </a>
           </div>
         </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ArrowTrendingDownIcon className="h-6 w-6 text-red-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Budgeted Expenses</dt>
-                  <dd className="text-lg font-semibold text-gray-900">{formatCurrency(totalBudgetedExpenses)}</dd>
-                </dl>
-              </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 bg-green-50 border-b border-green-100">
+              <h2 className="text-lg font-semibold text-green-800">Income by Category</h2>
             </div>
-            <div className="mt-2">
-              <span className="text-sm text-gray-500">Actual: </span>
-              <span className={`text-sm font-medium ${totalActualExpenses <= totalBudgetedExpenses ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(totalActualExpenses)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ChartBarIcon className="h-6 w-6 text-blue-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Budgeted Net</dt>
-                  <dd className="text-lg font-semibold text-gray-900">{formatCurrency(netBudgeted)}</dd>
-                </dl>
-              </div>
-            </div>
-            <div className="mt-2">
-              <span className="text-sm text-gray-500">Actual Net: </span>
-              <span className={`text-sm font-medium ${netActual >= netBudgeted ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(netActual)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CurrencyDollarIcon className="h-6 w-6 text-purple-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Budget Utilization</dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {((totalActualExpenses / totalBudgetedExpenses) * 100).toFixed(1)}%
-                  </dd>
-                </dl>
-              </div>
-            </div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className={`h-2.5 rounded-full ${totalActualExpenses <= totalBudgetedExpenses ? 'bg-blue-600' : 'bg-red-600'}`}
-                style={{ width: `${Math.min((totalActualExpenses / totalBudgetedExpenses) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Budget Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Income Budget */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-4 py-5 sm:px-6 bg-green-50 border-b border-green-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-medium text-green-800">Income Budget</h3>
-                <p className="mt-1 text-sm text-green-600">
-                  {incomeGroups.length} groups • {incomeCategories.length} categories
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-green-600">Total Budget</p>
-                <p className="text-lg font-bold text-green-800">{formatCurrency(totalBudgetedIncome)}</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 max-h-[600px] overflow-y-auto">
-            {viewMode === 'grouped' ? (
-              renderGroupedTable(incomeGroups, 'income')
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Budgeted</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actual</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Variance</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    {editMode && <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {incomeCategories.map((category) => (
-                    <tr key={category.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {category.name}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {editingCategory === category.id ? (
-                          <input
-                            type="number"
-                            value={editValue}
-                            onChange={(e) => setEditValue(Number(e.target.value))}
-                            className="w-24 px-2 py-1 text-right border border-blue-400 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEdit(category.id);
-                              if (e.key === 'Escape') cancelEdit();
-                            }}
-                          />
-                        ) : (
-                          formatCurrency(category.budgeted)
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(category.actual)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right ${getVarianceColor(category.variancePercent, 'income')}`}>
-                        {formatCurrency(category.variance)} ({category.variancePercent > 0 ? '+' : ''}{category.variancePercent}%)
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
-                        {getStatusIcon(category.variancePercent, 'income')}
-                      </td>
-                      {editMode && (
-                        <td className="px-4 py-3 whitespace-nowrap text-center">
-                          {editingCategory === category.id ? (
-                            <div className="flex gap-1 justify-center">
-                              <button
-                                onClick={() => saveEdit(category.id)}
-                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => startEdit(category.id, category.budgeted)}
-                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                            >
-                              Edit
-                            </button>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="px-4 py-3 bg-green-50 border-t border-green-100">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-green-800">Total Income</span>
-              <div className="flex gap-6 text-sm">
-                <span>Budget: {formatCurrency(totalBudgetedIncome)}</span>
-                <span className="font-medium">Actual: {formatCurrency(totalActualIncome)}</span>
-                <span className={totalActualIncome >= totalBudgetedIncome ? 'text-green-600' : 'text-red-600'}>
-                  {formatCurrency(totalActualIncome - totalBudgetedIncome)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Expense Budget */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-4 py-5 sm:px-6 bg-red-50 border-b border-red-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-medium text-red-800">Expense Budget</h3>
-                <p className="mt-1 text-sm text-red-600">
-                  {expenseGroups.length} groups • {expenseCategories.length} categories
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-red-600">Total Budget</p>
-                <p className="text-lg font-bold text-red-800">{formatCurrency(totalBudgetedExpenses)}</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 max-h-[600px] overflow-y-auto">
-            {viewMode === 'grouped' ? (
-              renderGroupedTable(expenseGroups, 'expense')
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Budgeted</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actual</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Variance</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    {editMode && <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {expenseCategories.map((category) => (
-                    <tr key={category.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {category.name}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {editingCategory === category.id ? (
-                          <input
-                            type="number"
-                            value={editValue}
-                            onChange={(e) => setEditValue(Number(e.target.value))}
-                            className="w-24 px-2 py-1 text-right border border-blue-400 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEdit(category.id);
-                              if (e.key === 'Escape') cancelEdit();
-                            }}
-                          />
-                        ) : (
-                          formatCurrency(category.budgeted)
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(category.actual)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right ${getVarianceColor(category.variancePercent, 'expense')}`}>
-                        {formatCurrency(Math.abs(category.variance))} ({category.variancePercent > 0 ? '+' : ''}{category.variancePercent}%)
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
-                        {getStatusIcon(category.variancePercent, 'expense')}
-                      </td>
-                      {editMode && (
-                        <td className="px-4 py-3 whitespace-nowrap text-center">
-                          {editingCategory === category.id ? (
-                            <div className="flex gap-1 justify-center">
-                              <button
-                                onClick={() => saveEdit(category.id)}
-                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => startEdit(category.id, category.budgeted)}
-                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                            >
-                              Edit
-                            </button>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="px-4 py-3 bg-red-50 border-t border-red-100">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-red-800">Total Expenses</span>
-              <div className="flex gap-6 text-sm">
-                <span>Budget: {formatCurrency(totalBudgetedExpenses)}</span>
-                <span className="font-medium">Actual: {formatCurrency(totalActualExpenses)}</span>
-                <span className={totalActualExpenses <= totalBudgetedExpenses ? 'text-green-600' : 'text-red-600'}>
-                  {formatCurrency(totalBudgetedExpenses - totalActualExpenses)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Budget Allocation Chart - By Groups */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Budget Allocation by Department</h3>
-          <p className="mt-1 text-sm text-gray-500">Visual breakdown of expense categories by group</p>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {expenseGroups.map((group) => {
-              const utilization = group.totalBudgeted > 0 ? (group.totalActual / group.totalBudgeted) * 100 : 0;
-              
-              return (
-                <div key={group.name}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-gray-700">{group.name}</span>
-                    <span className="text-sm text-gray-500">
-                      {formatCurrency(group.totalActual)} / {formatCurrency(group.totalBudgeted)} ({utilization.toFixed(0)}%)
-                    </span>
+            <div className="divide-y divide-gray-200">
+              {activeIncomeItems.length === 0 ? (
+                <p className="p-6 text-gray-500 text-center">No income recorded yet</p>
+              ) : (
+                activeIncomeItems.map((item) => (
+                  <div key={item.id} className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-gray-700">{item.category_name}</span>
+                    <span className="font-medium text-green-600">{formatCurrency(item.actual)}</span>
                   </div>
-                  <div className="relative w-full bg-gray-200 rounded-full h-4">
-                    <div
-                      className={`absolute top-0 left-0 h-4 rounded-full ${utilization > 100 ? 'bg-red-500' : utilization > 90 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                      style={{ width: `${Math.min(utilization, 100)}%` }}
-                    />
-                    {utilization > 100 && (
-                      <div
-                        className="absolute top-0 h-4 rounded-r-full bg-red-600"
-                        style={{ left: '100%', width: `${Math.min(utilization - 100, 20)}%` }}
-                      />
-                    )}
-                  </div>
+                ))
+              )}
+              {activeIncomeItems.length > 0 && (
+                <div className="px-6 py-4 bg-green-50 flex justify-between items-center font-bold">
+                  <span className="text-green-800">Total Income</span>
+                  <span className="text-green-700">{formatCurrency(totalActualIncome)}</span>
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Net Position Summary */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-4 py-5 sm:px-6 bg-blue-50 border-b border-blue-100">
-          <h3 className="text-lg font-medium text-blue-800">Net Position Summary</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-green-600 mb-1">Total Income</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(totalActualIncome)}</p>
-              <p className="text-xs text-green-600 mt-1">vs {formatCurrency(totalBudgetedIncome)} budget</p>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 bg-red-50 border-b border-red-100">
+              <h2 className="text-lg font-semibold text-red-800">Expenses by Category</h2>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <p className="text-sm text-red-600 mb-1">Total Expenses</p>
-              <p className="text-2xl font-bold text-red-700">{formatCurrency(totalActualExpenses)}</p>
-              <p className="text-xs text-red-600 mt-1">vs {formatCurrency(totalBudgetedExpenses)} budget</p>
-            </div>
-            <div className={`text-center p-4 rounded-lg ${netActual >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
-              <p className={`text-sm mb-1 ${netActual >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>Net Position</p>
-              <p className={`text-2xl font-bold ${netActual >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-                {formatCurrency(netActual)}
-              </p>
-              <p className={`text-xs mt-1 ${netActual >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                vs {formatCurrency(netBudgeted)} budgeted
-              </p>
+            <div className="divide-y divide-gray-200">
+              {activeExpenseItems.length === 0 ? (
+                <p className="p-6 text-gray-500 text-center">No expenses recorded yet</p>
+              ) : (
+                activeExpenseItems.map((item) => (
+                  <div key={item.id} className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-gray-700">{item.category_name}</span>
+                    <span className="font-medium text-red-600">{formatCurrency(item.actual)}</span>
+                  </div>
+                ))
+              )}
+              {activeExpenseItems.length > 0 && (
+                <div className="px-6 py-4 bg-red-50 flex justify-between items-center font-bold">
+                  <span className="text-red-800">Total Expenses</span>
+                  <span className="text-red-700">{formatCurrency(totalActualExpenses)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>Note:</strong> Budget targets are not yet configured. Currently showing actual income and expenses only.
+        </p>
       </div>
     </div>
   );

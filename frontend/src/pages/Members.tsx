@@ -130,7 +130,7 @@ export default function MembersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Members</h1>
-          <p className="text-gray-600">Manage your church congregation</p>
+          <p className="text-gray-600">Manage the congregation</p>
         </div>
         <button onClick={openNewModal} className="btn-primary flex items-center gap-2">
           <PlusIcon className="w-5 h-5" />
