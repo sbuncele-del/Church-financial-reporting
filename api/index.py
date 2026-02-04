@@ -722,6 +722,38 @@ class handler(BaseHTTPRequestHandler):
                 entries = cur.fetchall()
                 self.send_json([dict(e) for e in entries] if entries else [])
             
+            # Admin: Seed comprehensive expense categories (GET for easy testing)
+            elif path == '/api/v1/admin/seed-categories':
+                church_id = query.get('church_id', ['1'])[0]
+                
+                # Comprehensive expense categories
+                comprehensive_categories = [
+                    ('Senior Pastor Salary', 1), ('Associate Pastor Salary', 2), ('Staff Salaries', 3),
+                    ('Payroll Taxes & UIF', 4), ('Staff Benefits', 5), ('Housing Allowance', 6), ('Transport Allowance', 7),
+                    ('Rent/Mortgage', 10), ('Electricity', 11), ('Water & Rates', 12), ('Security', 13),
+                    ('Cleaning & Maintenance', 14), ('Repairs & Renovations', 15), ('Insurance', 16), ('Garden & Grounds', 17),
+                    ('Office Supplies', 20), ('Printing & Stationery', 21), ('Telephone & Internet', 22),
+                    ('Postage & Courier', 23), ('Bank Charges', 24), ('Accounting & Audit', 25),
+                    ('Legal Fees', 26), ('Software & Subscriptions', 27),
+                    ('Youth Ministry Expenses', 30), ('Children Ministry Expenses', 31), ('Women Ministry Expenses', 32),
+                    ('Men Ministry Expenses', 33), ('Small Groups & Cell Ministry', 34), ('Discipleship & Training', 35),
+                    ('Worship Equipment', 40), ('Sound & AV Equipment', 41), ('Music Licensing (CCLI)', 42),
+                    ('Livestream & Media', 43), ('Website & Social Media', 44),
+                    ('Missions Support', 50), ('Outreach Programs', 51), ('Evangelism Materials', 52), ('Community Projects', 53),
+                    ('Benevolence - Members', 60), ('Benevolence - Community', 61), ('Funeral Assistance', 62), ('Food Parcels & Relief', 63),
+                    ('Church Events', 70), ('Conferences & Seminars', 71), ('Hospitality & Catering', 72), ('Guest Speakers', 73),
+                    ('Vehicle Expenses', 80), ('Fuel', 81), ('Travel & Accommodation', 82),
+                    ('Denominational Dues', 90), ('Books & Resources', 91), ('Miscellaneous Expenses', 99),
+                ]
+                
+                # Clear existing and insert new
+                cur.execute("DELETE FROM expense_categories WHERE church_id = %s", (church_id,))
+                for name, sort_order in comprehensive_categories:
+                    cur.execute("INSERT INTO expense_categories (name, church_id, sort_order) VALUES (%s, %s, %s)", (name, church_id, sort_order))
+                conn.commit()
+                
+                self.send_json({"message": f"Seeded {len(comprehensive_categories)} categories for church {church_id}", "count": len(comprehensive_categories)})
+            
             else:
                 self.send_json({"error": "Not found", "path": path}, 404)
             
