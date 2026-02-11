@@ -480,7 +480,7 @@ class handler(BaseHTTPRequestHandler):
             cur = get_dict_cursor(conn)
             
             # Health/Root
-            if path in ['', '/api', '/api/v1']:
+            if path in ['', '/api', '/api/v1', '/api/v1/health']:
                 self.send_json({"message": "Church SOLAR API", "version": "2.5.0", "status": "healthy", "database": "connected"})
             
             # SOLAR Dashboard
@@ -849,18 +849,21 @@ class handler(BaseHTTPRequestHandler):
                 cur.execute("SELECT * FROM income_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
                 if not categories:
-                    # Return default categories if none exist for this church
-                    default_cats = [
-                        {'id': 1, 'name': 'Tithes', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 1},
-                        {'id': 2, 'name': 'First Fruits', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 2},
-                        {'id': 3, 'name': 'Regular Seed', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 3},
-                        {'id': 4, 'name': 'Alms', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 4},
-                        {'id': 5, 'name': 'Special Seed', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 5},
-                        {'id': 6, 'name': 'Offerings', 'church_id': int(church_id), 'is_tax_deductible': True, 'sort_order': 6},
+                    # Auto-seed default income categories into the database
+                    default_income = [
+                        ('Tithes', True, 1), ('First Fruits', True, 2), ('Regular Seed', True, 3),
+                        ('Alms', True, 4), ('Special Seed', True, 5), ('Offerings', True, 6),
+                        ('Missions', True, 7), ('Building Fund', True, 8), ('Other Income', True, 99),
                     ]
-                    self.send_json(default_cats)
-                else:
-                    self.send_json([dict(c) for c in categories])
+                    for name, tax_ded, sort_order in default_income:
+                        cur.execute(
+                            "INSERT INTO income_categories (name, church_id, is_tax_deductible, sort_order) VALUES (%s, %s, %s, %s)",
+                            (name, church_id, tax_ded, sort_order)
+                        )
+                    conn.commit()
+                    cur.execute("SELECT * FROM income_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
+                    categories = cur.fetchall()
+                self.send_json([dict(c) for c in categories])
             
             # Finance - Expense Categories
             elif path == '/api/v1/finance/expense-categories':
@@ -872,12 +875,37 @@ class handler(BaseHTTPRequestHandler):
                     return
                 cur.execute("SELECT * FROM expense_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
-                # If fewer than 10 categories, return comprehensive default list
+                # If fewer than 10 categories, auto-seed comprehensive list into the database
                 if not categories or len(categories) < 10:
-                    # Return comprehensive expense categories from DEMO_DATA
-                    self.send_json(DEMO_DATA['expense_categories'])
-                else:
-                    self.send_json([dict(c) for c in categories])
+                    # Delete any existing sparse categories first
+                    cur.execute("DELETE FROM expense_categories WHERE church_id = %s", (church_id,))
+                    comprehensive = [
+                        ('Senior Pastor Salary', 1), ('Associate Pastor Salary', 2), ('Staff Salaries', 3),
+                        ('Payroll Taxes & UIF', 4), ('Staff Benefits', 5), ('Housing Allowance', 6), ('Transport Allowance', 7),
+                        ('Rent/Mortgage', 10), ('Electricity', 11), ('Water & Rates', 12), ('Security', 13),
+                        ('Cleaning & Maintenance', 14), ('Repairs & Renovations', 15), ('Insurance', 16), ('Garden & Grounds', 17),
+                        ('Office Supplies', 20), ('Printing & Stationery', 21), ('Telephone & Internet', 22),
+                        ('Postage & Courier', 23), ('Bank Charges', 24), ('Accounting & Audit', 25),
+                        ('Legal Fees', 26), ('Software & Subscriptions', 27),
+                        ('Youth Ministry Expenses', 30), ('Children Ministry Expenses', 31), ('Women Ministry Expenses', 32),
+                        ('Men Ministry Expenses', 33), ('Small Groups & Cell Ministry', 34), ('Discipleship & Training', 35),
+                        ('Worship Equipment', 40), ('Sound & AV Equipment', 41), ('Music Licensing (CCLI)', 42),
+                        ('Livestream & Media', 43), ('Website & Social Media', 44),
+                        ('Missions Support', 50), ('Outreach Programs', 51), ('Evangelism Materials', 52), ('Community Projects', 53),
+                        ('Benevolence - Members', 60), ('Benevolence - Community', 61), ('Funeral Assistance', 62), ('Food Parcels & Relief', 63),
+                        ('Church Events', 70), ('Conferences & Seminars', 71), ('Hospitality & Catering', 72), ('Guest Speakers', 73),
+                        ('Vehicle Expenses', 80), ('Fuel', 81), ('Travel & Accommodation', 82),
+                        ('Denominational Dues', 90), ('Books & Resources', 91), ('Miscellaneous Expenses', 99),
+                    ]
+                    for name, sort_order in comprehensive:
+                        cur.execute(
+                            "INSERT INTO expense_categories (name, church_id, sort_order) VALUES (%s, %s, %s)",
+                            (name, church_id, sort_order)
+                        )
+                    conn.commit()
+                    cur.execute("SELECT * FROM expense_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
+                    categories = cur.fetchall()
+                self.send_json([dict(c) for c in categories])
             
             # Finance - Income entries (filtered by church_id)
             elif path == '/api/v1/finance/income':
@@ -1137,20 +1165,41 @@ class handler(BaseHTTPRequestHandler):
                 church_id = church['id']
                 
                 # Seed default income categories for the new church
-                income_categories = ['Tithes', 'First Fruits', 'Regular Seed', 'Alms', 'Special Seed', 'Missions', 'Building Fund', 'Other Income']
-                for i, cat in enumerate(income_categories, 1):
+                income_categories = [
+                    ('Tithes', True, 1), ('First Fruits', True, 2), ('Regular Seed', True, 3),
+                    ('Alms', True, 4), ('Special Seed', True, 5), ('Offerings', True, 6),
+                    ('Missions', True, 7), ('Building Fund', True, 8), ('Other Income', True, 99),
+                ]
+                for name, tax_ded, sort_order in income_categories:
                     cur.execute("""
                         INSERT INTO income_categories (name, church_id, is_tax_deductible, sort_order)
-                        VALUES (%s, %s, true, %s)
-                    """, (cat, church_id, i))
+                        VALUES (%s, %s, %s, %s)
+                    """, (name, church_id, tax_ded, sort_order))
                 
-                # Seed default expense categories for the new church
-                expense_categories = ['Salaries', 'Utilities', 'Rent/Mortgage', 'Office Supplies', 'Missions', 'Outreach', 'Maintenance', 'Other Expenses']
-                for i, cat in enumerate(expense_categories, 1):
+                # Seed comprehensive expense categories for the new church
+                expense_categories = [
+                    ('Senior Pastor Salary', 1), ('Associate Pastor Salary', 2), ('Staff Salaries', 3),
+                    ('Payroll Taxes & UIF', 4), ('Staff Benefits', 5), ('Housing Allowance', 6), ('Transport Allowance', 7),
+                    ('Rent/Mortgage', 10), ('Electricity', 11), ('Water & Rates', 12), ('Security', 13),
+                    ('Cleaning & Maintenance', 14), ('Repairs & Renovations', 15), ('Insurance', 16), ('Garden & Grounds', 17),
+                    ('Office Supplies', 20), ('Printing & Stationery', 21), ('Telephone & Internet', 22),
+                    ('Postage & Courier', 23), ('Bank Charges', 24), ('Accounting & Audit', 25),
+                    ('Legal Fees', 26), ('Software & Subscriptions', 27),
+                    ('Youth Ministry Expenses', 30), ('Children Ministry Expenses', 31), ('Women Ministry Expenses', 32),
+                    ('Men Ministry Expenses', 33), ('Small Groups & Cell Ministry', 34), ('Discipleship & Training', 35),
+                    ('Worship Equipment', 40), ('Sound & AV Equipment', 41), ('Music Licensing (CCLI)', 42),
+                    ('Livestream & Media', 43), ('Website & Social Media', 44),
+                    ('Missions Support', 50), ('Outreach Programs', 51), ('Evangelism Materials', 52), ('Community Projects', 53),
+                    ('Benevolence - Members', 60), ('Benevolence - Community', 61), ('Funeral Assistance', 62), ('Food Parcels & Relief', 63),
+                    ('Church Events', 70), ('Conferences & Seminars', 71), ('Hospitality & Catering', 72), ('Guest Speakers', 73),
+                    ('Vehicle Expenses', 80), ('Fuel', 81), ('Travel & Accommodation', 82),
+                    ('Denominational Dues', 90), ('Books & Resources', 91), ('Miscellaneous Expenses', 99),
+                ]
+                for name, sort_order in expense_categories:
                     cur.execute("""
                         INSERT INTO expense_categories (name, church_id, sort_order)
                         VALUES (%s, %s, %s)
-                    """, (cat, church_id, i))
+                    """, (name, church_id, sort_order))
                 
                 # Create user
                 cur.execute("""
