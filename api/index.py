@@ -272,7 +272,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS budgets (
                 id SERIAL PRIMARY KEY,
                 church_id INTEGER REFERENCES churches(id),
-                name VARCHAR(255) NOT NULL,
+                name VARCHAR(255),
                 description TEXT,
                 year INTEGER NOT NULL,
                 start_date DATE,
@@ -286,6 +286,23 @@ def init_db():
                 updated_at TIMESTAMP
             )
         """)
+        # Add columns that may be missing from older schema
+        for col, coltype in [
+            ('name', 'VARCHAR(255)'),
+            ('description', 'TEXT'),
+            ('start_date', 'DATE'),
+            ('end_date', 'DATE'),
+            ('is_active', 'BOOLEAN DEFAULT TRUE'),
+            ('is_approved', 'BOOLEAN DEFAULT FALSE'),
+            ('approved_by', 'INTEGER'),
+            ('approved_at', 'TIMESTAMP'),
+            ('created_by', 'INTEGER'),
+            ('updated_at', 'TIMESTAMP'),
+        ]:
+            try:
+                cur.execute(f"ALTER TABLE budgets ADD COLUMN IF NOT EXISTS {col} {coltype}")
+            except Exception:
+                pass
 
         # Budget items table
         cur.execute("""
@@ -311,6 +328,30 @@ def init_db():
                 notes TEXT
             )
         """)
+        # Add columns that may be missing from older budget_items schema
+        for col, coltype in [
+            ('income_category_id', 'INTEGER'),
+            ('expense_category_id', 'INTEGER'),
+            ('is_income', 'BOOLEAN DEFAULT FALSE'),
+            ('annual_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('jan_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('feb_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('mar_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('apr_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('may_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('jun_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('jul_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('aug_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('sep_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('oct_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('nov_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('dec_amount', 'DECIMAL(12,2) DEFAULT 0'),
+            ('notes', 'TEXT'),
+        ]:
+            try:
+                cur.execute(f"ALTER TABLE budget_items ADD COLUMN IF NOT EXISTS {col} {coltype}")
+            except Exception:
+                pass
         
         # SOLAR assessments table
         cur.execute("""
@@ -1505,7 +1546,7 @@ class handler(BaseHTTPRequestHandler):
             import traceback
             error_trace = traceback.format_exc()
             print(f"POST Error: {str(e)}\n{error_trace}")
-            self.send_json({"error": str(e), "trace": error_trace}, 500)
+            self.send_json({"error": "An internal server error occurred", "detail": str(e)}, 500)
             if conn:
                 conn.rollback()
                 conn.close()
