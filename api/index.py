@@ -1503,8 +1503,9 @@ class handler(BaseHTTPRequestHandler):
             
         except Exception as e:
             import traceback
-            print(f"POST Error: {str(e)}\n{traceback.format_exc()}")
-            self.send_json({"error": "An internal server error occurred"}, 500)
+            error_trace = traceback.format_exc()
+            print(f"POST Error: {str(e)}\n{error_trace}")
+            self.send_json({"error": str(e), "trace": error_trace}, 500)
             if conn:
                 conn.rollback()
                 conn.close()
