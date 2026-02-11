@@ -1,0 +1,12 @@
+node_modules
+backend
+__pycache__
+*.pyc
+.git
+test-*
+pptx_images
+test-results
+docker-compose*
+*.cjs
+puppeteer-test.js
+playwright-test.js
