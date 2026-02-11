@@ -18,14 +18,13 @@ import type { Budget as BudgetType, BudgetItemCreate, IncomeCategory, ExpenseCat
 
 export default function Budget() {
   const [loading, setLoading] = useState(true);
-  const [budgets, setBudgets] = useState<BudgetType[]>([]);
+  const [, setBudgets] = useState<BudgetType[]>([]);
   const [activeBudget, setActiveBudget] = useState<BudgetType | null>(null);
   const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [financeSummary, setFinanceSummary] = useState<any>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const { user } = useAuthStore();
@@ -140,23 +139,6 @@ export default function Budget() {
       await loadData();
     } catch (error) {
       toast.error('Failed to update budget amount');
-    }
-  };
-
-  const handleAddItem = async (categoryId: number, isIncome: boolean) => {
-    if (!activeBudget) return;
-    try {
-      const data: BudgetItemCreate = {
-        is_income: isIncome,
-        annual_amount: 0,
-        ...(isIncome ? { income_category_id: categoryId } : { expense_category_id: categoryId }),
-      };
-      await financeService.addBudgetItem(activeBudget.id, data);
-      toast.success('Category added to budget');
-      setShowAddItemModal(false);
-      await loadData();
-    } catch (error) {
-      toast.error('Failed to add category');
     }
   };
 
