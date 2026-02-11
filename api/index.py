@@ -370,15 +370,23 @@ def get_allowed_origins():
     origins = os.environ.get('ALLOWED_ORIGINS', '')
     if origins:
         return [o.strip() for o in origins.split(',')]
-    return []
+    # Default: allow common Vercel and local origins
+    return [
+        'https://church-solar-app.vercel.app',
+        'http://localhost:5173',
+        'http://localhost:3000',
+    ]
 
 def get_cors_origin(request_origin):
-    """Return the origin if it's allowed, otherwise empty string."""
+    """Return the origin if it's allowed, otherwise the default origin."""
     allowed = get_allowed_origins()
-    if not allowed:
-        # No origins configured - deny cross-origin requests
-        return ''
-    if request_origin and request_origin in allowed:
+    if not request_origin:
+        # Same-origin request (no Origin header) - allow it
+        return allowed[0] if allowed else '*'
+    if request_origin in allowed:
+        return request_origin
+    # Also allow any *.vercel.app subdomain for preview deployments
+    if request_origin.endswith('.vercel.app'):
         return request_origin
     return ''
 
@@ -388,10 +396,13 @@ class handler(BaseHTTPRequestHandler):
         origin = get_cors_origin(request_origin)
         if origin:
             self.send_header('Access-Control-Allow-Origin', origin)
-            self.send_header('Vary', 'Origin')
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+        else:
+            # Fallback: allow without credentials
+            self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Vary', 'Origin')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        self.send_header('Access-Control-Allow-Credentials', 'true')
 
     def send_json(self, data, status=200):
         self.send_response(status)
