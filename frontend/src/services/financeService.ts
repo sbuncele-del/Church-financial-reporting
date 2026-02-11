@@ -1,7 +1,7 @@
 import api from './api';
-import type { 
-  Income, 
-  IncomeCreate, 
+import type {
+  Income,
+  IncomeCreate,
   IncomeListResponse,
   Expense,
   ExpenseCreate,
@@ -9,14 +9,20 @@ import type {
   IncomeCategory,
   ExpenseCategory,
   FinancialAccount,
-  FinancialSummary
+  FinancialSummary,
+  Budget,
+  BudgetCreate,
+  BudgetItemCreate,
 } from '../types';
 import { useAuthStore } from '../stores/authStore';
 
 // Helper to get current church_id
 const getChurchId = (): number => {
   const user = useAuthStore.getState().user;
-  return user?.church_id || 1;
+  if (!user?.church_id) {
+    throw new Error('No church_id available. Please log in again.');
+  }
+  return user.church_id;
 };
 
 export const financeService = {
@@ -55,8 +61,8 @@ export const financeService = {
     category_id?: number;
     member_id?: number;
   }): Promise<IncomeListResponse> {
-    const response = await api.get('/finance/income', { 
-      params: { ...params, church_id: getChurchId() } 
+    const response = await api.get('/finance/income', {
+      params: { ...params, church_id: getChurchId() }
     });
     // API returns plain array, convert to expected format
     const data = response.data;
@@ -80,9 +86,9 @@ export const financeService = {
   },
 
   async createIncome(data: IncomeCreate): Promise<Income> {
-    const response = await api.post<Income>('/finance/income', { 
-      ...data, 
-      church_id: getChurchId() 
+    const response = await api.post<Income>('/finance/income', {
+      ...data,
+      church_id: getChurchId()
     });
     return response.data;
   },
@@ -105,8 +111,8 @@ export const financeService = {
     category_id?: number;
     is_approved?: boolean;
   }): Promise<ExpenseListResponse> {
-    const response = await api.get('/finance/expenses', { 
-      params: { ...params, church_id: getChurchId() } 
+    const response = await api.get('/finance/expenses', {
+      params: { ...params, church_id: getChurchId() }
     });
     // API returns plain array, convert to expected format
     const data = response.data;
@@ -130,7 +136,10 @@ export const financeService = {
   },
 
   async createExpense(data: ExpenseCreate): Promise<Expense> {
-    const response = await api.post<Expense>('/finance/expenses', data);
+    const response = await api.post<Expense>('/finance/expenses', {
+      ...data,
+      church_id: getChurchId()
+    });
     return response.data;
   },
 
@@ -155,6 +164,50 @@ export const financeService = {
       params: { start_date: startDate, end_date: endDate, church_id: churchId || getChurchId() }
     });
     return response.data;
+  },
+
+  // Budgets
+  async getBudgets(year?: number): Promise<Budget[]> {
+    const response = await api.get<Budget[]>('/finance/budgets', {
+      params: { ...(year ? { year } : {}), church_id: getChurchId() }
+    });
+    return response.data;
+  },
+
+  async getBudget(id: number): Promise<Budget> {
+    const response = await api.get<Budget>(`/finance/budgets/${id}`);
+    return response.data;
+  },
+
+  async createBudget(data: BudgetCreate): Promise<Budget> {
+    const response = await api.post<Budget>('/finance/budgets', {
+      ...data,
+      church_id: getChurchId()
+    });
+    return response.data;
+  },
+
+  async updateBudget(id: number, data: { name?: string; description?: string; is_active?: boolean; is_approved?: boolean }): Promise<Budget> {
+    const response = await api.put<Budget>(`/finance/budgets/${id}`, data);
+    return response.data;
+  },
+
+  async deleteBudget(id: number): Promise<void> {
+    await api.delete(`/finance/budgets/${id}`);
+  },
+
+  async addBudgetItem(budgetId: number, data: BudgetItemCreate): Promise<any> {
+    const response = await api.post(`/finance/budgets/${budgetId}/items`, data);
+    return response.data;
+  },
+
+  async updateBudgetItem(budgetId: number, itemId: number, data: BudgetItemCreate): Promise<any> {
+    const response = await api.put(`/finance/budgets/${budgetId}/items/${itemId}`, data);
+    return response.data;
+  },
+
+  async deleteBudgetItem(budgetId: number, itemId: number): Promise<void> {
+    await api.delete(`/finance/budgets/${budgetId}/items/${itemId}`);
   },
 };
 
@@ -191,6 +244,13 @@ export const reportsService = {
     const response = await api.get('/reports/export/transactions', {
       params: { start_date: startDate, end_date: endDate, transaction_type: type },
       responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  async getBudgetVsActual(budgetId: number, asOfDate?: string) {
+    const response = await api.get('/reports/budget-vs-actual', {
+      params: { budget_id: budgetId, as_of_date: asOfDate }
     });
     return response.data;
   },

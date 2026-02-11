@@ -238,3 +238,74 @@ export interface ExpenseListResponse {
   page: number;
   per_page: number;
 }
+
+// Budget
+export interface BudgetItem {
+  id: number;
+  budget_id: number;
+  income_category_id?: number;
+  expense_category_id?: number;
+  is_income: boolean;
+  annual_amount: number;
+  jan_amount: number;
+  feb_amount: number;
+  mar_amount: number;
+  apr_amount: number;
+  may_amount: number;
+  jun_amount: number;
+  jul_amount: number;
+  aug_amount: number;
+  sep_amount: number;
+  oct_amount: number;
+  nov_amount: number;
+  dec_amount: number;
+  notes?: string;
+  category_name?: string;
+}
+
+export interface BudgetItemCreate {
+  income_category_id?: number;
+  expense_category_id?: number;
+  is_income: boolean;
+  annual_amount: number;
+  jan_amount?: number;
+  feb_amount?: number;
+  mar_amount?: number;
+  apr_amount?: number;
+  may_amount?: number;
+  jun_amount?: number;
+  jul_amount?: number;
+  aug_amount?: number;
+  sep_amount?: number;
+  oct_amount?: number;
+  nov_amount?: number;
+  dec_amount?: number;
+  notes?: string;
+}
+
+export interface Budget {
+  id: number;
+  church_id: number;
+  name: string;
+  description?: string;
+  year: number;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  is_approved: boolean;
+  approved_by?: number;
+  approved_at?: string;
+  created_by?: number;
+  created_at: string;
+  updated_at?: string;
+  items: BudgetItem[];
+}
+
+export interface BudgetCreate {
+  name: string;
+  description?: string;
+  year: number;
+  start_date: string;
+  end_date: string;
+  items: BudgetItemCreate[];
+}

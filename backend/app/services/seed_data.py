@@ -23,44 +23,70 @@ def seed_default_categories(db: Session, church_id: int):
         category = IncomeCategory(church_id=church_id, **cat_data)
         db.add(category)
     
-    # Default Expense Categories (common for most churches)
+    # Comprehensive Expense Categories
     expense_categories = [
-        # Personnel
-        {"name": "Pastoral Salary", "description": "Pastor compensation", "sort_order": 1},
-        {"name": "Staff Salaries", "description": "Other staff compensation", "sort_order": 2},
-        {"name": "Payroll Taxes", "description": "Employer payroll taxes", "sort_order": 3},
-        {"name": "Benefits", "description": "Health insurance, retirement, etc.", "sort_order": 4},
-        
-        # Facilities
+        # Personnel & Salaries (1-9)
+        {"name": "Senior Pastor Salary", "description": "Senior pastor compensation", "sort_order": 1},
+        {"name": "Associate Pastor Salary", "description": "Associate pastor compensation", "sort_order": 2},
+        {"name": "Staff Salaries", "description": "Other staff compensation", "sort_order": 3},
+        {"name": "Payroll Taxes & UIF", "description": "Employer payroll taxes and UIF", "sort_order": 4},
+        {"name": "Staff Benefits", "description": "Health insurance, retirement, etc.", "sort_order": 5},
+        {"name": "Housing Allowance", "description": "Pastoral housing allowance", "sort_order": 6},
+        {"name": "Transport Allowance", "description": "Staff transport allowance", "sort_order": 7},
+        # Facilities (10-19)
         {"name": "Rent/Mortgage", "description": "Building payment", "sort_order": 10},
-        {"name": "Utilities", "description": "Electric, water, gas, internet", "sort_order": 11},
-        {"name": "Maintenance & Repairs", "description": "Building upkeep", "sort_order": 12},
-        {"name": "Insurance", "description": "Property and liability insurance", "sort_order": 13},
-        {"name": "Cleaning & Janitorial", "description": "Cleaning services and supplies", "sort_order": 14},
-        
-        # Ministry
-        {"name": "Worship & Music", "description": "Music equipment, licensing, etc.", "sort_order": 20},
-        {"name": "Children's Ministry", "description": "Sunday school, VBS, etc.", "sort_order": 21},
-        {"name": "Youth Ministry", "description": "Youth group expenses", "sort_order": 22},
-        {"name": "Adult Ministry", "description": "Small groups, classes, etc.", "sort_order": 23},
-        {"name": "Outreach & Evangelism", "description": "Community outreach programs", "sort_order": 24},
-        
-        # Operations
-        {"name": "Office Supplies", "description": "Paper, printing, etc.", "sort_order": 30},
-        {"name": "Technology", "description": "Software, equipment, website", "sort_order": 31},
-        {"name": "Communications", "description": "Phone, mail, marketing", "sort_order": 32},
-        {"name": "Professional Services", "description": "Accounting, legal, consulting", "sort_order": 33},
-        
-        # Missions & Giving
-        {"name": "Missions Support", "description": "Missionary support", "sort_order": 40},
-        {"name": "Denominational Giving", "description": "Contributions to denomination", "sort_order": 41},
-        {"name": "Benevolence", "description": "Assistance to those in need", "sort_order": 42},
-        {"name": "Community Support", "description": "Local charity support", "sort_order": 43},
-        
-        # Other
-        {"name": "Events & Hospitality", "description": "Church events, food, decorations", "sort_order": 50},
-        {"name": "Training & Development", "description": "Conferences, books, courses", "sort_order": 51},
-        {"name": "Miscellaneous", "description": "Other expenses", "sort_order": 99},
+        {"name": "Electricity", "description": "Electricity costs", "sort_order": 11},
+        {"name": "Water & Rates", "description": "Water and municipal rates", "sort_order": 12},
+        {"name": "Security", "description": "Security services", "sort_order": 13},
+        {"name": "Cleaning & Maintenance", "description": "Cleaning services and building maintenance", "sort_order": 14},
+        {"name": "Repairs & Renovations", "description": "Building repairs and renovations", "sort_order": 15},
+        {"name": "Insurance", "description": "Property and liability insurance", "sort_order": 16},
+        {"name": "Garden & Grounds", "description": "Landscaping and grounds maintenance", "sort_order": 17},
+        # Office & Admin (20-29)
+        {"name": "Office Supplies", "description": "Paper, printing, etc.", "sort_order": 20},
+        {"name": "Printing & Stationery", "description": "Printing and stationery costs", "sort_order": 21},
+        {"name": "Telephone & Internet", "description": "Phone and internet services", "sort_order": 22},
+        {"name": "Postage & Courier", "description": "Postage and courier services", "sort_order": 23},
+        {"name": "Bank Charges", "description": "Banking fees and charges", "sort_order": 24},
+        {"name": "Accounting & Audit", "description": "Accounting and audit fees", "sort_order": 25},
+        {"name": "Legal Fees", "description": "Legal services", "sort_order": 26},
+        {"name": "Software & Subscriptions", "description": "Software licenses and subscriptions", "sort_order": 27},
+        # Ministry Departments (30-39)
+        {"name": "Youth Ministry Expenses", "description": "Youth group expenses", "sort_order": 30},
+        {"name": "Children Ministry Expenses", "description": "Sunday school, VBS, etc.", "sort_order": 31},
+        {"name": "Women Ministry Expenses", "description": "Women's ministry activities", "sort_order": 32},
+        {"name": "Men Ministry Expenses", "description": "Men's ministry activities", "sort_order": 33},
+        {"name": "Small Groups & Cell Ministry", "description": "Small group expenses", "sort_order": 34},
+        {"name": "Discipleship & Training", "description": "Discipleship programs", "sort_order": 35},
+        # Worship & Media (40-49)
+        {"name": "Worship Equipment", "description": "Musical instruments and worship supplies", "sort_order": 40},
+        {"name": "Sound & AV Equipment", "description": "Audio-visual equipment", "sort_order": 41},
+        {"name": "Music Licensing (CCLI)", "description": "Music licensing fees", "sort_order": 42},
+        {"name": "Livestream & Media", "description": "Livestreaming and media production", "sort_order": 43},
+        {"name": "Website & Social Media", "description": "Website and social media costs", "sort_order": 44},
+        # Outreach & Missions (50-59)
+        {"name": "Missions Support", "description": "Missionary support", "sort_order": 50},
+        {"name": "Outreach Programs", "description": "Community outreach programs", "sort_order": 51},
+        {"name": "Evangelism Materials", "description": "Evangelism materials and resources", "sort_order": 52},
+        {"name": "Community Projects", "description": "Community development projects", "sort_order": 53},
+        # Benevolence (60-69)
+        {"name": "Benevolence - Members", "description": "Assistance to church members", "sort_order": 60},
+        {"name": "Benevolence - Community", "description": "Assistance to community", "sort_order": 61},
+        {"name": "Funeral Assistance", "description": "Funeral support and assistance", "sort_order": 62},
+        {"name": "Food Parcels & Relief", "description": "Food parcels and relief aid", "sort_order": 63},
+        # Events (70-79)
+        {"name": "Church Events", "description": "Church events and functions", "sort_order": 70},
+        {"name": "Conferences & Seminars", "description": "Conferences and seminars", "sort_order": 71},
+        {"name": "Hospitality & Catering", "description": "Hospitality and catering", "sort_order": 72},
+        {"name": "Guest Speakers", "description": "Guest speaker honorariums", "sort_order": 73},
+        # Transport & Travel (80-89)
+        {"name": "Vehicle Expenses", "description": "Church vehicle expenses", "sort_order": 80},
+        {"name": "Fuel", "description": "Fuel costs", "sort_order": 81},
+        {"name": "Travel & Accommodation", "description": "Travel and accommodation costs", "sort_order": 82},
+        # Miscellaneous (90-99)
+        {"name": "Denominational Dues", "description": "Contributions to denomination", "sort_order": 90},
+        {"name": "Books & Resources", "description": "Books and educational resources", "sort_order": 91},
+        {"name": "Miscellaneous Expenses", "description": "Other expenses", "sort_order": 99},
     ]
     
     for cat_data in expense_categories:

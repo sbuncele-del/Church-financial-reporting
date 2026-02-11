@@ -223,7 +223,7 @@ export default function ReportsPage() {
                   onChange={(e) => setYear(parseInt(e.target.value))}
                   className="input"
                 >
-                  {[2023, 2024, 2025, 2026].map((y) => (
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
@@ -376,17 +376,21 @@ export default function ReportsPage() {
                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                       <h4 className="font-semibold text-purple-800 mb-2">Weekly Highlights</h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-purple-600">Sunday Collection:</span>
-                          <span className="ml-2 font-medium">{formatCurrency(reportData.summary.total_income * 0.7)}</span>
-                        </div>
-                        <div>
-                          <span className="text-purple-600">Midweek Collection:</span>
-                          <span className="ml-2 font-medium">{formatCurrency(reportData.summary.total_income * 0.3)}</span>
-                        </div>
+                        {reportData.income.length > 0 ? (
+                          reportData.income.slice(0, 3).map((item: any, i: number) => (
+                            <div key={i}>
+                              <span className="text-purple-600">{item.category}:</span>
+                              <span className="ml-2 font-medium">{formatCurrency(item.amount)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div>
+                            <span className="text-purple-600">No income this week</span>
+                          </div>
+                        )}
                         <div>
                           <span className="text-purple-600">Transactions:</span>
-                          <span className="ml-2 font-medium">{reportData.income.length + reportData.expenses.length}</span>
+                          <span className="ml-2 font-medium">{(reportData.income?.length || 0) + (reportData.expenses?.length || 0)}</span>
                         </div>
                         <div>
                           <span className="text-purple-600">Weekly Status:</span>

@@ -45,12 +45,28 @@ export default function FinancialDashboard() {
         financeService.getExpenses({ per_page: 100 }),
       ]);
 
-      const totalIncome = typeof incomeData.total_amount === 'number' 
-        ? incomeData.total_amount 
+      const totalIncome = typeof incomeData.total_amount === 'number'
+        ? incomeData.total_amount
         : parseFloat(incomeData.total_amount || '0');
       const totalExpenses = typeof expenseData.total_amount === 'number'
         ? expenseData.total_amount
         : parseFloat(expenseData.total_amount || '0');
+
+      // Calculate top income category from actual data
+      const incomeByCat: Record<string, number> = {};
+      for (const inc of incomeData.incomes || []) {
+        const catName = inc.category_name || 'Other';
+        incomeByCat[catName] = (incomeByCat[catName] || 0) + (parseFloat(String(inc.amount)) || 0);
+      }
+      const topIncome = Object.entries(incomeByCat).sort((a, b) => b[1] - a[1])[0];
+
+      // Calculate top expense category from actual data
+      const expenseByCat: Record<string, number> = {};
+      for (const exp of expenseData.expenses || []) {
+        const catName = exp.category_name || 'Other';
+        expenseByCat[catName] = (expenseByCat[catName] || 0) + (parseFloat(String(exp.amount)) || 0);
+      }
+      const topExpense = Object.entries(expenseByCat).sort((a, b) => b[1] - a[1])[0];
 
       setStats({
         totalIncome,
@@ -58,8 +74,8 @@ export default function FinancialDashboard() {
         netPosition: totalIncome - totalExpenses,
         incomeCount: incomeData.total || 0,
         expenseCount: expenseData.total || 0,
-        topIncomeCategory: 'Tithes & Offerings',
-        topExpenseCategory: 'Salaries & Benefits',
+        topIncomeCategory: topIncome ? topIncome[0] : 'N/A',
+        topExpenseCategory: topExpense ? topExpense[0] : 'N/A',
       });
     } catch (error) {
       console.error('Failed to load financial data:', error);

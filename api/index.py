@@ -6,21 +6,44 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import hashlib
+import hmac
 import secrets
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
+
+# Password hashing using PBKDF2 (stdlib, no dependencies)
+HASH_ITERATIONS = 260000
+HASH_ALGO = 'sha256'
+
+def hash_password(password: str, salt: str = None) -> str:
+    """Hash a password with PBKDF2-SHA256. Returns 'salt$hash'."""
+    if salt is None:
+        salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac(HASH_ALGO, password.encode(), salt.encode(), HASH_ITERATIONS)
+    return f"{salt}${dk.hex()}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify a password against a stored 'salt$hash' string.
+    Also accepts legacy SHA256 hashes for migration."""
+    if '$' in stored_hash:
+        salt, _ = stored_hash.split('$', 1)
+        return hmac.compare_digest(hash_password(password, salt), stored_hash)
+    else:
+        # Legacy SHA256 fallback for existing accounts
+        legacy = hashlib.sha256(password.encode()).hexdigest()
+        return hmac.compare_digest(legacy, stored_hash)
 
 def get_database_url():
     return os.environ.get('DATABASE_URL', os.environ.get('POSTGRES_URL', ''))
 
 def is_demo_mode():
     db_url = get_database_url()
-    allow_demo = os.environ.get('ALLOW_DEMO_DATA', 'true').lower() == 'true'
+    allow_demo = os.environ.get('ALLOW_DEMO_DATA', 'false').lower() == 'true'
     return (not db_url) and allow_demo
 
 def is_demo_disabled():
     db_url = get_database_url()
-    allow_demo = os.environ.get('ALLOW_DEMO_DATA', 'true').lower() == 'true'
+    allow_demo = os.environ.get('ALLOW_DEMO_DATA', 'false').lower() == 'true'
     return (not db_url) and (not allow_demo)
 
 # Demo data
@@ -29,7 +52,7 @@ DEMO_DATA = {
         {'id': 1, 'name': 'Grace Community Church', 'city': 'Johannesburg', 'country': 'South Africa'}
     ],
     'users': [
-        {'id': 1, 'email': 'pastor@gracechurch.org', 'password_hash': hashlib.sha256('password123'.encode()).hexdigest(),
+        {'id': 1, 'email': 'pastor@gracechurch.org', 'password_hash': hash_password(os.environ.get('DEMO_PASSWORD', 'ChangeMeBeforeProduction1!')),
          'first_name': 'John', 'last_name': 'Pastor', 'role': 'admin', 'church_id': 1, 'is_active': True}
     ],
     'sessions': {},  # token -> user_id
@@ -249,12 +272,43 @@ def init_db():
             CREATE TABLE IF NOT EXISTS budgets (
                 id SERIAL PRIMARY KEY,
                 church_id INTEGER REFERENCES churches(id),
-                category_type VARCHAR(50) NOT NULL,
-                category_id INTEGER NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
                 year INTEGER NOT NULL,
-                month INTEGER NOT NULL,
-                amount DECIMAL(12,2) NOT NULL,
-                UNIQUE(church_id, category_type, category_id, year, month)
+                start_date DATE,
+                end_date DATE,
+                is_active BOOLEAN DEFAULT TRUE,
+                is_approved BOOLEAN DEFAULT FALSE,
+                approved_by INTEGER,
+                approved_at TIMESTAMP,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP
+            )
+        """)
+
+        # Budget items table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS budget_items (
+                id SERIAL PRIMARY KEY,
+                budget_id INTEGER REFERENCES budgets(id) ON DELETE CASCADE,
+                income_category_id INTEGER,
+                expense_category_id INTEGER,
+                is_income BOOLEAN DEFAULT FALSE,
+                annual_amount DECIMAL(12,2) DEFAULT 0,
+                jan_amount DECIMAL(12,2) DEFAULT 0,
+                feb_amount DECIMAL(12,2) DEFAULT 0,
+                mar_amount DECIMAL(12,2) DEFAULT 0,
+                apr_amount DECIMAL(12,2) DEFAULT 0,
+                may_amount DECIMAL(12,2) DEFAULT 0,
+                jun_amount DECIMAL(12,2) DEFAULT 0,
+                jul_amount DECIMAL(12,2) DEFAULT 0,
+                aug_amount DECIMAL(12,2) DEFAULT 0,
+                sep_amount DECIMAL(12,2) DEFAULT 0,
+                oct_amount DECIMAL(12,2) DEFAULT 0,
+                nov_amount DECIMAL(12,2) DEFAULT 0,
+                dec_amount DECIMAL(12,2) DEFAULT 0,
+                notes TEXT
             )
         """)
         
@@ -311,28 +365,62 @@ def calculate_grade(score):
     if score >= 50: return 'D'
     return 'F'
 
+def get_allowed_origins():
+    """Get allowed CORS origins from environment variable."""
+    origins = os.environ.get('ALLOWED_ORIGINS', '')
+    if origins:
+        return [o.strip() for o in origins.split(',')]
+    return []
+
+def get_cors_origin(request_origin):
+    """Return the origin if it's allowed, otherwise empty string."""
+    allowed = get_allowed_origins()
+    if not allowed:
+        # No origins configured - deny cross-origin requests
+        return ''
+    if request_origin and request_origin in allowed:
+        return request_origin
+    return ''
+
 class handler(BaseHTTPRequestHandler):
+    def _send_cors_headers(self):
+        request_origin = self.headers.get('Origin', '')
+        origin = get_cors_origin(request_origin)
+        if origin:
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Vary', 'Origin')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.send_header('Access-Control-Allow-Credentials', 'true')
+
     def send_json(self, data, status=200):
         self.send_response(status)
         self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', '*')
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(json.dumps(data, default=str).encode())
-    
+
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', '*')
+        self._send_cors_headers()
         self.end_headers()
 
     def get_body(self):
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length:
-            return json.loads(self.rfile.read(content_length).decode())
+            try:
+                return json.loads(self.rfile.read(content_length).decode())
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return None
         return {}
+
+    def _require_church_id(self, query):
+        """Extract church_id from query params. Returns (church_id, error_sent).
+        If church_id is missing, sends a 400 error and returns (None, True)."""
+        values = query.get('church_id', [])
+        if not values or not values[0]:
+            return None, True
+        return values[0], False
 
     def get_auth_user(self):
         """Get authenticated user from token"""
@@ -453,7 +541,12 @@ class handler(BaseHTTPRequestHandler):
             
             # List Assessments
             elif path == '/api/v1/solar/assessments':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("""
                     SELECT * FROM solar_assessments 
                     WHERE church_id = %s 
@@ -464,7 +557,12 @@ class handler(BaseHTTPRequestHandler):
             
             # List Members
             elif path == '/api/v1/members':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("""
                     SELECT id, first_name, last_name, email, phone, member_status,
                            first_name || ' ' || last_name as full_name
@@ -478,7 +576,12 @@ class handler(BaseHTTPRequestHandler):
             # Members Summary (for dropdowns)
             elif path == '/api/v1/members/summary':
                 user = self.get_auth_user()
-                church_id = user['church_id'] if user else query.get('church_id', ['1'])[0]
+                church_id = user['church_id'] if user else query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "Authentication or church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("""
                     SELECT id, first_name, last_name
                     FROM members 
@@ -496,7 +599,12 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance Summary - Real database query
             elif path == '/api/v1/finance/summary':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 
                 # Get total income for this church
                 cur.execute("""
@@ -550,7 +658,55 @@ class handler(BaseHTTPRequestHandler):
             elif path == '/api/v1/reports/income-statement':
                 start_date = query.get('start_date', ['2026-01-01'])[0]
                 end_date = query.get('end_date', ['2026-01-31'])[0]
-                
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+
+                # Get income by category from real data
+                cur.execute("""
+                    SELECT ic.name as category, COALESCE(SUM(ie.amount), 0) as amount
+                    FROM income_categories ic
+                    LEFT JOIN income_entries ie ON ic.id = ie.category_id
+                        AND ie.church_id = %s
+                        AND ie.date >= %s AND ie.date <= %s
+                    WHERE ic.church_id = %s
+                    GROUP BY ic.name
+                    HAVING COALESCE(SUM(ie.amount), 0) > 0
+                    ORDER BY amount DESC
+                """, (church_id, start_date, end_date, church_id))
+                income_rows = cur.fetchall()
+                total_income = sum(float(r['amount']) for r in income_rows)
+
+                # Get expenses by category from real data
+                cur.execute("""
+                    SELECT ec.name as category, COALESCE(SUM(ee.amount), 0) as amount
+                    FROM expense_categories ec
+                    LEFT JOIN expense_entries ee ON ec.id = ee.category_id
+                        AND ee.church_id = %s
+                        AND ee.date >= %s AND ee.date <= %s
+                    WHERE ec.church_id = %s
+                    GROUP BY ec.name
+                    HAVING COALESCE(SUM(ee.amount), 0) > 0
+                    ORDER BY amount DESC
+                """, (church_id, start_date, end_date, church_id))
+                expense_rows = cur.fetchall()
+                total_expenses = sum(float(r['amount']) for r in expense_rows)
+
+                income_list = [
+                    {"category": r['category'], "amount": float(r['amount']),
+                     "percentage": round(float(r['amount']) / total_income * 100) if total_income > 0 else 0}
+                    for r in income_rows
+                ]
+                expense_list = [
+                    {"category": r['category'], "amount": float(r['amount']),
+                     "percentage": round(float(r['amount']) / total_expenses * 100) if total_expenses > 0 else 0}
+                    for r in expense_rows
+                ]
+                net_income = total_income - total_expenses
+
                 self.send_json({
                     "report_type": "Income Statement",
                     "generated_at": datetime.now().isoformat(),
@@ -559,61 +715,56 @@ class handler(BaseHTTPRequestHandler):
                         "end": end_date
                     },
                     "currency": "ZAR",
-                    "income": [
-                        {"category": "Tithes", "amount": 8000.00, "percentage": 64},
-                        {"category": "Offerings", "amount": 3000.00, "percentage": 24},
-                        {"category": "Donations", "amount": 1500.00, "percentage": 12}
-                    ],
-                    "expenses": [
-                        {"category": "Salaries", "amount": 4000.00, "percentage": 47},
-                        {"category": "Utilities", "amount": 1500.00, "percentage": 18},
-                        {"category": "Outreach", "amount": 1200.00, "percentage": 14},
-                        {"category": "Maintenance", "amount": 1000.00, "percentage": 12},
-                        {"category": "Supplies", "amount": 800.00, "percentage": 9}
-                    ],
-                    "net_income": 4000.00,
+                    "income": income_list,
+                    "expenses": expense_list,
+                    "net_income": net_income,
                     "summary": {
-                        "total_income": 12500.00,
-                        "total_expenses": 8500.00,
-                        "net_income": 4000.00,
-                        "margin_percentage": 32
+                        "total_income": total_income,
+                        "total_expenses": total_expenses,
+                        "net_income": net_income,
+                        "margin_percentage": round(net_income / total_income * 100) if total_income > 0 else 0
                     }
                 })
             
             # Reports - Monthly Comparison
             elif path == '/api/v1/reports/monthly-comparison':
                 year = int(query.get('year', ['2026'])[0])
-                
-                # Generate monthly data from actual income/expense records
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+
                 months = []
-                month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                
+
                 for i in range(1, 13):
                     month_name = month_names[i-1]
-                    month_str = f"{year}-{i:02d}"
-                    
-                    # Sum income for this month
-                    month_income = sum(
-                        inc['amount'] for inc in DEMO_DATA.get('incomes', [])
-                        if inc['date'].startswith(month_str)
-                    )
-                    
-                    # Sum expenses for this month
-                    month_expenses = sum(
-                        exp['amount'] for exp in DEMO_DATA.get('expenses', [])
-                        if exp['date'].startswith(month_str)
-                    )
-                    
-                    # If no actual data, generate realistic demo data for past months
-                    if month_income == 0 and month_expenses == 0:
-                        # Generate data for months up to current (Feb 2026)
-                        if year < 2026 or (year == 2026 and i <= 2):
-                            base_income = 45000 + (i * 2000) + ((i * 7) % 5000)
-                            base_expense = 32000 + (i * 1500) + ((i * 13) % 3000)
-                            month_income = base_income
-                            month_expenses = base_expense
-                    
+                    # Calculate last day of month
+                    if i == 12:
+                        next_month_start = f"{year + 1}-01-01"
+                    else:
+                        next_month_start = f"{year}-{i+1:02d}-01"
+                    month_start = f"{year}-{i:02d}-01"
+
+                    # Get actual income for this month
+                    cur.execute("""
+                        SELECT COALESCE(SUM(amount), 0) as total
+                        FROM income_entries
+                        WHERE church_id = %s AND date >= %s AND date < %s
+                    """, (church_id, month_start, next_month_start))
+                    month_income = float(cur.fetchone()['total'])
+
+                    # Get actual expenses for this month
+                    cur.execute("""
+                        SELECT COALESCE(SUM(amount), 0) as total
+                        FROM expense_entries
+                        WHERE church_id = %s AND date >= %s AND date < %s
+                    """, (church_id, month_start, next_month_start))
+                    month_expenses = float(cur.fetchone()['total'])
+
                     months.append({
                         "month": month_name,
                         "month_number": i,
@@ -621,13 +772,13 @@ class handler(BaseHTTPRequestHandler):
                         "expenses": month_expenses,
                         "net": month_income - month_expenses
                     })
-                
+
                 self.send_json({
                     "report_type": "Monthly Comparison",
                     "year": year,
                     "generated_at": datetime.now().isoformat(),
                     "currency": "ZAR",
-                    "api_version": "2.3.0",
+                    "api_version": "2.5.0",
                     "months": months,
                     "totals": {
                         "income": sum(m['income'] for m in months),
@@ -643,26 +794,58 @@ class handler(BaseHTTPRequestHandler):
             
             # Reports - Export Transactions (returns CSV)
             elif path == '/api/v1/reports/export/transactions':
+                start_date = query.get('start_date', ['2026-01-01'])[0]
+                end_date = query.get('end_date', ['2026-12-31'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                tx_type = query.get('transaction_type', ['all'])[0]
+
                 self.send_response(200)
                 self.send_header('Content-type', 'text/csv')
-                self.send_header('Content-Disposition', 'attachment; filename="transactions.csv"')
+                self.send_header('Content-Disposition', f'attachment; filename="transactions_{start_date}_{end_date}.csv"')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 csv_content = "Date,Type,Category,Description,Amount\n"
-                csv_content += "2026-01-05,Income,Tithes,Sunday Service Collection,8000.00\n"
-                csv_content += "2026-01-12,Income,Offerings,Sunday Offering,3000.00\n"
-                csv_content += "2026-01-15,Income,Donations,General Donation,1500.00\n"
-                csv_content += "2026-01-01,Expense,Salaries,Staff Salaries,4000.00\n"
-                csv_content += "2026-01-10,Expense,Utilities,Electricity,1500.00\n"
-                csv_content += "2026-01-15,Expense,Outreach,Community Program,1200.00\n"
-                csv_content += "2026-01-20,Expense,Maintenance,Building Repair,1000.00\n"
-                csv_content += "2026-01-25,Expense,Supplies,Office Supplies,800.00\n"
+
+                if tx_type in ('all', 'income'):
+                    cur.execute("""
+                        SELECT ie.date, ic.name as category, ie.description, ie.amount
+                        FROM income_entries ie
+                        LEFT JOIN income_categories ic ON ie.category_id = ic.id
+                        WHERE ie.church_id = %s AND ie.date >= %s AND ie.date <= %s
+                        ORDER BY ie.date
+                    """, (church_id, start_date, end_date))
+                    for row in cur.fetchall():
+                        desc = (row['description'] or '').replace(',', ' ')
+                        csv_content += f"{row['date']},Income,{row['category']},{desc},{row['amount']}\n"
+
+                if tx_type in ('all', 'expense'):
+                    cur.execute("""
+                        SELECT ee.date, ec.name as category, ee.description, ee.amount
+                        FROM expense_entries ee
+                        LEFT JOIN expense_categories ec ON ee.category_id = ec.id
+                        WHERE ee.church_id = %s AND ee.date >= %s AND ee.date <= %s
+                        ORDER BY ee.date
+                    """, (church_id, start_date, end_date))
+                    for row in cur.fetchall():
+                        desc = (row['description'] or '').replace(',', ' ')
+                        csv_content += f"{row['date']},Expense,{row['category']},{desc},{row['amount']}\n"
+
                 self.wfile.write(csv_content.encode())
                 return
             
             # Finance - Income Categories
             elif path == '/api/v1/finance/income-categories':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("SELECT * FROM income_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
                 if not categories:
@@ -681,7 +864,12 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance - Expense Categories
             elif path == '/api/v1/finance/expense-categories':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("SELECT * FROM expense_categories WHERE church_id = %s ORDER BY sort_order", (church_id,))
                 categories = cur.fetchall()
                 # If fewer than 10 categories, return comprehensive default list
@@ -693,7 +881,12 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance - Income entries (filtered by church_id)
             elif path == '/api/v1/finance/income':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("""
                     SELECT ie.*, ic.name as category_name 
                     FROM income_entries ie 
@@ -706,7 +899,12 @@ class handler(BaseHTTPRequestHandler):
             
             # Finance - Expense entries (filtered by church_id)
             elif path == '/api/v1/finance/expenses':
-                church_id = query.get('church_id', ['1'])[0]
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 cur.execute("""
                     SELECT ee.*, ec.name as category_name 
                     FROM expense_entries ee 
@@ -719,8 +917,31 @@ class handler(BaseHTTPRequestHandler):
             
             # Admin: Seed comprehensive expense categories (GET for easy testing)
             elif path == '/api/v1/admin/seed-categories':
-                church_id = query.get('church_id', ['1'])[0]
-                
+                # Require admin authentication
+                auth_header = self.headers.get('Authorization', '')
+                if not auth_header.startswith('Bearer '):
+                    self.send_json({"error": "Authentication required"}, 401)
+                    cur.close()
+                    conn.close()
+                    return
+
+                # Verify user is admin
+                token = auth_header[7:]
+                cur.execute("SELECT role FROM users WHERE id = (SELECT user_id FROM sessions WHERE token = %s)", (token,))
+                auth_user = cur.fetchone()
+                if not auth_user or auth_user['role'] != 'admin':
+                    self.send_json({"error": "Admin access required"}, 403)
+                    cur.close()
+                    conn.close()
+                    return
+
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+
                 # Comprehensive expense categories
                 comprehensive_categories = [
                     ('Senior Pastor Salary', 1), ('Associate Pastor Salary', 2), ('Staff Salaries', 3),
@@ -740,14 +961,81 @@ class handler(BaseHTTPRequestHandler):
                     ('Vehicle Expenses', 80), ('Fuel', 81), ('Travel & Accommodation', 82),
                     ('Denominational Dues', 90), ('Books & Resources', 91), ('Miscellaneous Expenses', 99),
                 ]
-                
+
                 # Clear existing and insert new
                 cur.execute("DELETE FROM expense_categories WHERE church_id = %s", (church_id,))
                 for name, sort_order in comprehensive_categories:
                     cur.execute("INSERT INTO expense_categories (name, church_id, sort_order) VALUES (%s, %s, %s)", (name, church_id, sort_order))
                 conn.commit()
-                
+
                 self.send_json({"message": f"Seeded {len(comprehensive_categories)} categories for church {church_id}", "count": len(comprehensive_categories)})
+
+            # Finance - Budget list
+            elif path == '/api/v1/finance/budgets':
+                church_id = query.get('church_id', [None])[0]
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                year = query.get('year', [None])[0]
+
+                if year:
+                    cur.execute("""
+                        SELECT * FROM budgets
+                        WHERE church_id = %s AND year = %s
+                        ORDER BY year DESC
+                    """, (church_id, year))
+                else:
+                    cur.execute("""
+                        SELECT * FROM budgets
+                        WHERE church_id = %s
+                        ORDER BY year DESC
+                    """, (church_id,))
+
+                budgets_raw = cur.fetchall()
+                result = []
+                for b in budgets_raw:
+                    budget = dict(b)
+                    # Get items for this budget
+                    cur.execute("SELECT * FROM budget_items WHERE budget_id = %s", (budget['id'],))
+                    items = [dict(item) for item in cur.fetchall()]
+                    # Resolve category names
+                    for item in items:
+                        if item.get('income_category_id'):
+                            cur.execute("SELECT name FROM income_categories WHERE id = %s", (item['income_category_id'],))
+                            cat = cur.fetchone()
+                            item['category_name'] = cat['name'] if cat else None
+                        elif item.get('expense_category_id'):
+                            cur.execute("SELECT name FROM expense_categories WHERE id = %s", (item['expense_category_id'],))
+                            cat = cur.fetchone()
+                            item['category_name'] = cat['name'] if cat else None
+                    budget['items'] = items
+                    result.append(budget)
+                self.send_json(result)
+
+            # Finance - Single budget
+            elif '/api/v1/finance/budgets/' in path and path.split('/')[-1].isdigit():
+                budget_id = path.split('/')[-1]
+                cur.execute("SELECT * FROM budgets WHERE id = %s", (budget_id,))
+                budget = cur.fetchone()
+                if not budget:
+                    self.send_json({"error": "Budget not found"}, 404)
+                else:
+                    budget = dict(budget)
+                    cur.execute("SELECT * FROM budget_items WHERE budget_id = %s", (budget_id,))
+                    items = [dict(item) for item in cur.fetchall()]
+                    for item in items:
+                        if item.get('income_category_id'):
+                            cur.execute("SELECT name FROM income_categories WHERE id = %s", (item['income_category_id'],))
+                            cat = cur.fetchone()
+                            item['category_name'] = cat['name'] if cat else None
+                        elif item.get('expense_category_id'):
+                            cur.execute("SELECT name FROM expense_categories WHERE id = %s", (item['expense_category_id'],))
+                            cat = cur.fetchone()
+                            item['category_name'] = cat['name'] if cat else None
+                    budget['items'] = items
+                    self.send_json(budget)
             
             else:
                 self.send_json({"error": "Not found", "path": path}, 404)
@@ -759,7 +1047,7 @@ class handler(BaseHTTPRequestHandler):
             import traceback
             error_trace = traceback.format_exc()
             print(f"GET Error: {str(e)}\n{error_trace}")
-            self.send_json({"error": str(e), "trace": error_trace[:500]}, 500)
+            self.send_json({"error": "An internal server error occurred"}, 500)
             try:
                 if conn:
                     conn.close()
@@ -769,6 +1057,10 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split('?')[0].rstrip('/')
         data = self.get_body()
+
+        if data is None:
+            self.send_json({"error": "Invalid JSON in request body"}, 400)
+            return
         
         if is_demo_disabled():
             self.send_json({
@@ -795,21 +1087,22 @@ class handler(BaseHTTPRequestHandler):
             if path == '/api/v1/auth/login':
                 email = data.get('email', '')
                 password = data.get('password', '')
-                password_hash = hashlib.sha256(password.encode()).hexdigest()
-                
+
                 cur.execute("""
-                    SELECT id, email, first_name, last_name, role, church_id, is_active
-                    FROM users WHERE email = %s AND password_hash = %s
-                """, (email, password_hash))
+                    SELECT id, email, password_hash, first_name, last_name, role, church_id, is_active
+                    FROM users WHERE email = %s
+                """, (email,))
                 user = cur.fetchone()
-                
-                if user:
+
+                if user and verify_password(password, user['password_hash']):
                     token = secrets.token_hex(32)
+                    user_data = dict(user)
+                    del user_data['password_hash']
                     self.send_json({
                         "access_token": token,
                         "refresh_token": secrets.token_hex(32),
                         "token_type": "bearer",
-                        "user": dict(user)
+                        "user": user_data
                     })
                 else:
                     # Invalid credentials - return error
@@ -820,8 +1113,18 @@ class handler(BaseHTTPRequestHandler):
             # Register
             elif path == '/api/v1/auth/register':
                 email = data.get('email', '')
-                password = data.get('password', 'password123')
-                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                password = data.get('password', '')
+                if not email or not password:
+                    self.send_json({"error": "Email and password are required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                if len(password) < 8:
+                    self.send_json({"error": "Password must be at least 8 characters"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                password_hashed = hash_password(password)
                 church_name = data.get('church_name', 'My Church')
                 
                 # Create church first
@@ -854,7 +1157,7 @@ class handler(BaseHTTPRequestHandler):
                     INSERT INTO users (email, password_hash, first_name, last_name, role, church_id)
                     VALUES (%s, %s, %s, %s, 'admin', %s)
                     RETURNING id, email, first_name, last_name, role, church_id, is_active
-                """, (email, password_hash, data.get('first_name', ''), data.get('last_name', ''), church_id))
+                """, (email, password_hashed, data.get('first_name', ''), data.get('last_name', ''), church_id))
                 user = cur.fetchone()
                 conn.commit()
                 
@@ -869,7 +1172,12 @@ class handler(BaseHTTPRequestHandler):
             
             # Create Assessment
             elif path == '/api/v1/solar/assessments':
-                church_id = data.get('church_id', 1)
+                church_id = data.get('church_id')
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 period = data.get('assessment_period', 'Q1 2026')
                 
                 cur.execute("""
@@ -912,9 +1220,31 @@ class handler(BaseHTTPRequestHandler):
             
             # Create Income Entry
             elif path == '/api/v1/finance/income':
-                church_id = data.get('church_id', 1)
-                category_id = data.get('category_id', 1)
+                church_id = data.get('church_id')
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                category_id = data.get('category_id')
                 amount = data.get('amount', 0)
+                try:
+                    amount = float(amount)
+                except (TypeError, ValueError):
+                    self.send_json({"error": "Invalid amount"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                if amount <= 0 or amount > 999999999.99:
+                    self.send_json({"error": "Amount must be between 0.01 and 999,999,999.99"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                if not category_id:
+                    self.send_json({"error": "category_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
                 
@@ -929,9 +1259,31 @@ class handler(BaseHTTPRequestHandler):
             
             # Create Expense Entry
             elif path == '/api/v1/finance/expenses':
-                church_id = data.get('church_id', 1)
-                category_id = data.get('category_id', 1)
+                church_id = data.get('church_id')
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                category_id = data.get('category_id')
                 amount = data.get('amount', 0)
+                try:
+                    amount = float(amount)
+                except (TypeError, ValueError):
+                    self.send_json({"error": "Invalid amount"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                if amount <= 0 or amount > 999999999.99:
+                    self.send_json({"error": "Amount must be between 0.01 and 999,999,999.99"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                if not category_id:
+                    self.send_json({"error": "category_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
                 
@@ -946,89 +1298,142 @@ class handler(BaseHTTPRequestHandler):
             
             # Seed comprehensive expense categories for a church
             elif path == '/api/v1/admin/seed-expense-categories':
-                church_id = data.get('church_id', 1)
-                
+                # Require admin authentication
+                auth_header = self.headers.get('Authorization', '')
+                if not auth_header.startswith('Bearer '):
+                    self.send_json({"error": "Authentication required"}, 401)
+                    cur.close()
+                    conn.close()
+                    return
+
+                # Verify user is admin
+                token = auth_header[7:]
+                cur.execute("SELECT role FROM users WHERE id = (SELECT user_id FROM sessions WHERE token = %s)", (token,))
+                auth_user = cur.fetchone()
+                if not auth_user or auth_user['role'] != 'admin':
+                    self.send_json({"error": "Admin access required"}, 403)
+                    cur.close()
+                    conn.close()
+                    return
+
+                church_id = data.get('church_id')
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+
                 # Comprehensive expense categories for churches
                 comprehensive_categories = [
-                    # Personnel & Salaries (1-10)
-                    ('Senior Pastor Salary', 1),
-                    ('Associate Pastor Salary', 2),
-                    ('Staff Salaries', 3),
-                    ('Payroll Taxes & UIF', 4),
-                    ('Staff Benefits', 5),
-                    ('Housing Allowance', 6),
-                    ('Transport Allowance', 7),
-                    # Facilities (10-19)
-                    ('Rent/Mortgage', 10),
-                    ('Electricity', 11),
-                    ('Water & Rates', 12),
-                    ('Security', 13),
-                    ('Cleaning & Maintenance', 14),
-                    ('Repairs & Renovations', 15),
-                    ('Insurance', 16),
-                    ('Garden & Grounds', 17),
-                    # Office & Admin (20-29)
-                    ('Office Supplies', 20),
-                    ('Printing & Stationery', 21),
-                    ('Telephone & Internet', 22),
-                    ('Postage & Courier', 23),
-                    ('Bank Charges', 24),
-                    ('Accounting & Audit', 25),
-                    ('Legal Fees', 26),
-                    ('Software & Subscriptions', 27),
-                    # Ministry Departments (30-39)
-                    ('Youth Ministry Expenses', 30),
-                    ('Children Ministry Expenses', 31),
-                    ('Women Ministry Expenses', 32),
-                    ('Men Ministry Expenses', 33),
-                    ('Small Groups & Cell Ministry', 34),
-                    ('Discipleship & Training', 35),
-                    # Worship & Media (40-49)
-                    ('Worship Equipment', 40),
-                    ('Sound & AV Equipment', 41),
-                    ('Music Licensing (CCLI)', 42),
-                    ('Livestream & Media', 43),
-                    ('Website & Social Media', 44),
-                    # Outreach & Missions (50-59)
-                    ('Missions Support', 50),
-                    ('Outreach Programs', 51),
-                    ('Evangelism Materials', 52),
-                    ('Community Projects', 53),
-                    # Benevolence (60-69)
-                    ('Benevolence - Members', 60),
-                    ('Benevolence - Community', 61),
-                    ('Funeral Assistance', 62),
-                    ('Food Parcels & Relief', 63),
-                    # Events (70-79)
-                    ('Church Events', 70),
-                    ('Conferences & Seminars', 71),
-                    ('Hospitality & Catering', 72),
-                    ('Guest Speakers', 73),
-                    # Transport & Travel (80-89)
-                    ('Vehicle Expenses', 80),
-                    ('Fuel', 81),
-                    ('Travel & Accommodation', 82),
-                    # Miscellaneous (90-99)
-                    ('Denominational Dues', 90),
-                    ('Books & Resources', 91),
-                    ('Miscellaneous Expenses', 99),
+                    ('Senior Pastor Salary', 1), ('Associate Pastor Salary', 2), ('Staff Salaries', 3),
+                    ('Payroll Taxes & UIF', 4), ('Staff Benefits', 5), ('Housing Allowance', 6), ('Transport Allowance', 7),
+                    ('Rent/Mortgage', 10), ('Electricity', 11), ('Water & Rates', 12), ('Security', 13),
+                    ('Cleaning & Maintenance', 14), ('Repairs & Renovations', 15), ('Insurance', 16), ('Garden & Grounds', 17),
+                    ('Office Supplies', 20), ('Printing & Stationery', 21), ('Telephone & Internet', 22),
+                    ('Postage & Courier', 23), ('Bank Charges', 24), ('Accounting & Audit', 25),
+                    ('Legal Fees', 26), ('Software & Subscriptions', 27),
+                    ('Youth Ministry Expenses', 30), ('Children Ministry Expenses', 31), ('Women Ministry Expenses', 32),
+                    ('Men Ministry Expenses', 33), ('Small Groups & Cell Ministry', 34), ('Discipleship & Training', 35),
+                    ('Worship Equipment', 40), ('Sound & AV Equipment', 41), ('Music Licensing (CCLI)', 42),
+                    ('Livestream & Media', 43), ('Website & Social Media', 44),
+                    ('Missions Support', 50), ('Outreach Programs', 51), ('Evangelism Materials', 52), ('Community Projects', 53),
+                    ('Benevolence - Members', 60), ('Benevolence - Community', 61), ('Funeral Assistance', 62), ('Food Parcels & Relief', 63),
+                    ('Church Events', 70), ('Conferences & Seminars', 71), ('Hospitality & Catering', 72), ('Guest Speakers', 73),
+                    ('Vehicle Expenses', 80), ('Fuel', 81), ('Travel & Accommodation', 82),
+                    ('Denominational Dues', 90), ('Books & Resources', 91), ('Miscellaneous Expenses', 99),
                 ]
-                
-                # Clear existing categories for this church
+
                 cur.execute("DELETE FROM expense_categories WHERE church_id = %s", (church_id,))
-                
-                # Insert new categories
                 for name, sort_order in comprehensive_categories:
                     cur.execute("""
                         INSERT INTO expense_categories (name, church_id, sort_order)
                         VALUES (%s, %s, %s)
                     """, (name, church_id, sort_order))
-                
+
                 conn.commit()
                 self.send_json({
                     "message": f"Seeded {len(comprehensive_categories)} expense categories for church {church_id}",
                     "count": len(comprehensive_categories)
                 })
+
+            # Create Budget
+            elif path == '/api/v1/finance/budgets':
+                church_id = data.get('church_id')
+                if not church_id:
+                    self.send_json({"error": "church_id is required"}, 400)
+                    cur.close()
+                    conn.close()
+                    return
+                cur.execute("""
+                    INSERT INTO budgets (church_id, name, description, year, start_date, end_date, is_active, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, TRUE, NOW())
+                    RETURNING *
+                """, (
+                    church_id,
+                    data.get('name', f"{data.get('year', 2026)} Annual Budget"),
+                    data.get('description', ''),
+                    data.get('year', 2026),
+                    data.get('start_date'),
+                    data.get('end_date'),
+                ))
+                budget = dict(cur.fetchone())
+
+                # Create budget items
+                items = data.get('items', [])
+                budget_items = []
+                for item in items:
+                    cur.execute("""
+                        INSERT INTO budget_items (budget_id, income_category_id, expense_category_id, is_income, annual_amount)
+                        VALUES (%s, %s, %s, %s, %s)
+                        RETURNING *
+                    """, (
+                        budget['id'],
+                        item.get('income_category_id'),
+                        item.get('expense_category_id'),
+                        item.get('is_income', False),
+                        item.get('annual_amount', 0),
+                    ))
+                    bi = dict(cur.fetchone())
+                    # Resolve category name
+                    if bi.get('income_category_id'):
+                        cur.execute("SELECT name FROM income_categories WHERE id = %s", (bi['income_category_id'],))
+                        cat = cur.fetchone()
+                        bi['category_name'] = cat['name'] if cat else None
+                    elif bi.get('expense_category_id'):
+                        cur.execute("SELECT name FROM expense_categories WHERE id = %s", (bi['expense_category_id'],))
+                        cat = cur.fetchone()
+                        bi['category_name'] = cat['name'] if cat else None
+                    budget_items.append(bi)
+
+                conn.commit()
+                budget['items'] = budget_items
+                self.send_json(budget, 201)
+
+            # Add budget item
+            elif '/api/v1/finance/budgets/' in path and path.endswith('/items'):
+                budget_id = path.split('/')[-2]
+                cur.execute("""
+                    INSERT INTO budget_items (budget_id, income_category_id, expense_category_id, is_income, annual_amount)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING *
+                """, (
+                    budget_id,
+                    data.get('income_category_id'),
+                    data.get('expense_category_id'),
+                    data.get('is_income', False),
+                    data.get('annual_amount', 0),
+                ))
+                item = dict(cur.fetchone())
+                if item.get('income_category_id'):
+                    cur.execute("SELECT name FROM income_categories WHERE id = %s", (item['income_category_id'],))
+                    cat = cur.fetchone()
+                    item['category_name'] = cat['name'] if cat else None
+                elif item.get('expense_category_id'):
+                    cur.execute("SELECT name FROM expense_categories WHERE id = %s", (item['expense_category_id'],))
+                    cat = cur.fetchone()
+                    item['category_name'] = cat['name'] if cat else None
+                conn.commit()
+                self.send_json(item, 201)
             
             else:
                 self.send_json({"error": "Not found", "path": path}, 404)
@@ -1037,14 +1442,20 @@ class handler(BaseHTTPRequestHandler):
             conn.close()
             
         except Exception as e:
-            self.send_json({"error": str(e)}, 500)
+            import traceback
+            print(f"POST Error: {str(e)}\n{traceback.format_exc()}")
+            self.send_json({"error": "An internal server error occurred"}, 500)
             if conn:
                 conn.rollback()
                 conn.close()
-    
+
     def do_PUT(self):
         path = self.path.split('?')[0].rstrip('/')
         data = self.get_body()
+
+        if data is None:
+            self.send_json({"error": "Invalid JSON in request body"}, 400)
+            return
         
         conn = get_db()
         if not conn:
@@ -1057,7 +1468,7 @@ class handler(BaseHTTPRequestHandler):
             # Update Assessment Scores
             if '/api/v1/solar/assessments/' in path and '/scores' in path:
                 assessment_id = path.split('/')[-2]
-                
+
                 # Calculate overall score
                 scores = [
                     float(data.get('spiritual_vitality_score', 0)),
@@ -1068,7 +1479,7 @@ class handler(BaseHTTPRequestHandler):
                 ]
                 overall = sum(scores) / len(scores) if scores else 0
                 grade = calculate_grade(overall)
-                
+
                 cur.execute("""
                     UPDATE solar_assessments SET
                         spiritual_vitality_score = %s,
@@ -1095,6 +1506,62 @@ class handler(BaseHTTPRequestHandler):
                 assessment = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(assessment) if assessment else {"error": "Not found"})
+
+            # Update budget item
+            elif '/api/v1/finance/budgets/' in path and '/items/' in path:
+                parts = path.split('/')
+                item_id = parts[-1]
+                cur.execute("""
+                    UPDATE budget_items SET
+                        income_category_id = %s,
+                        expense_category_id = %s,
+                        is_income = %s,
+                        annual_amount = %s,
+                        notes = %s
+                    WHERE id = %s
+                    RETURNING *
+                """, (
+                    data.get('income_category_id'),
+                    data.get('expense_category_id'),
+                    data.get('is_income', False),
+                    data.get('annual_amount', 0),
+                    data.get('notes'),
+                    item_id,
+                ))
+                item = cur.fetchone()
+                if not item:
+                    self.send_json({"error": "Budget item not found"}, 404)
+                else:
+                    item = dict(item)
+                    if item.get('income_category_id'):
+                        cur.execute("SELECT name FROM income_categories WHERE id = %s", (item['income_category_id'],))
+                        cat = cur.fetchone()
+                        item['category_name'] = cat['name'] if cat else None
+                    elif item.get('expense_category_id'):
+                        cur.execute("SELECT name FROM expense_categories WHERE id = %s", (item['expense_category_id'],))
+                        cat = cur.fetchone()
+                        item['category_name'] = cat['name'] if cat else None
+                    conn.commit()
+                    self.send_json(item)
+
+            # Update budget
+            elif '/api/v1/finance/budgets/' in path:
+                budget_id = path.split('/')[-1]
+                fields = []
+                values = []
+                for key in ('name', 'description', 'is_active', 'is_approved'):
+                    if key in data:
+                        fields.append(f"{key} = %s")
+                        values.append(data[key])
+                if fields:
+                    fields.append("updated_at = NOW()")
+                    values.append(budget_id)
+                    cur.execute(f"UPDATE budgets SET {', '.join(fields)} WHERE id = %s RETURNING *", values)
+                    budget = cur.fetchone()
+                    conn.commit()
+                    self.send_json(dict(budget) if budget else {"error": "Not found"})
+                else:
+                    self.send_json({"error": "No fields to update"}, 400)
             
             else:
                 self.send_json({"error": "Not found", "path": path}, 404)
@@ -1103,11 +1570,13 @@ class handler(BaseHTTPRequestHandler):
             conn.close()
             
         except Exception as e:
-            self.send_json({"error": str(e)}, 500)
+            import traceback
+            print(f"PUT Error: {str(e)}\n{traceback.format_exc()}")
+            self.send_json({"error": "An internal server error occurred"}, 500)
             if conn:
                 conn.rollback()
                 conn.close()
-    
+
     def do_DELETE(self):
         path = self.path.split('?')[0].rstrip('/')
 
@@ -1136,11 +1605,26 @@ class handler(BaseHTTPRequestHandler):
                 cur.execute("DELETE FROM members WHERE id = %s", (member_id,))
                 conn.commit()
                 self.send_json({"message": "Deleted"})
-            
+
             # Delete Assessment
             elif '/api/v1/solar/assessments/' in path:
                 assessment_id = path.split('/')[-1]
                 cur.execute("DELETE FROM solar_assessments WHERE id = %s", (assessment_id,))
+                conn.commit()
+                self.send_json({"message": "Deleted"})
+
+            # Delete budget item
+            elif '/api/v1/finance/budgets/' in path and '/items/' in path:
+                item_id = path.split('/')[-1]
+                cur.execute("DELETE FROM budget_items WHERE id = %s", (item_id,))
+                conn.commit()
+                self.send_json({"message": "Deleted"})
+
+            # Delete budget (cascade deletes items)
+            elif '/api/v1/finance/budgets/' in path:
+                budget_id = path.split('/')[-1]
+                cur.execute("DELETE FROM budget_items WHERE budget_id = %s", (budget_id,))
+                cur.execute("DELETE FROM budgets WHERE id = %s", (budget_id,))
                 conn.commit()
                 self.send_json({"message": "Deleted"})
             
@@ -1151,7 +1635,9 @@ class handler(BaseHTTPRequestHandler):
             conn.close()
             
         except Exception as e:
-            self.send_json({"error": str(e)}, 500)
+            import traceback
+            print(f"DELETE Error: {str(e)}\n{traceback.format_exc()}")
+            self.send_json({"error": "An internal server error occurred"}, 500)
             if conn:
                 conn.rollback()
                 conn.close()
@@ -1160,16 +1646,6 @@ class handler(BaseHTTPRequestHandler):
     
     def handle_demo_get(self, path, query):
         """Handle GET requests in demo mode"""
-        
-        # Debug endpoint to check env vars (temporary)
-        if path == '/api/v1/debug':
-            env_keys = [k for k in os.environ.keys() if 'PG' in k or 'POSTGRES' in k or 'DATABASE' in k or 'NEON' in k]
-            self.send_json({
-                "env_keys": env_keys,
-                "database_url_set": bool(DATABASE_URL),
-                "database_url_len": len(DATABASE_URL) if DATABASE_URL else 0
-            })
-            return
         
         # Health/Root
         if path in ['', '/api', '/api/v1', '/api/v1/health']:
@@ -1508,10 +1984,9 @@ class handler(BaseHTTPRequestHandler):
         if path == '/api/v1/auth/login':
             email = data.get('email', '')
             password = data.get('password', '')
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
-            
+
             for user in DEMO_DATA['users']:
-                if user['email'] == email and user['password_hash'] == password_hash:
+                if user['email'] == email and verify_password(password, user['password_hash']):
                     token = secrets.token_urlsafe(32)
                     DEMO_DATA['sessions'][token] = user['id']
                     self.send_json({
@@ -1556,7 +2031,7 @@ class handler(BaseHTTPRequestHandler):
             
             # Create new user
             new_user_id = max(u['id'] for u in DEMO_DATA['users']) + 1
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            password_hash = hash_password(password)
             new_user = {
                 'id': new_user_id,
                 'email': email,

@@ -22,6 +22,7 @@ from app.schemas.finance import (
     IncomeCategoryCreate, IncomeCategoryUpdate, IncomeCategoryResponse,
     ExpenseCategoryCreate, ExpenseCategoryUpdate, ExpenseCategoryResponse,
     AccountCreate, AccountUpdate, AccountResponse,
+    BudgetCreate, BudgetUpdate, BudgetResponse, BudgetItemCreate, BudgetItemResponse,
     FinancialSummary, DateRangeFilter
 )
 from app.api.deps import get_current_user, require_finance, get_church_id
@@ -105,6 +106,11 @@ async def list_expense_categories(
     if not include_inactive:
         query = query.filter(ExpenseCategory.is_active == True)
     categories = query.order_by(ExpenseCategory.sort_order, ExpenseCategory.name).all()
+
+    # Auto-seed if none exist so users always see the core categories
+    if not categories:
+        seed_default_categories(db, church_id)
+        categories = query.order_by(ExpenseCategory.sort_order, ExpenseCategory.name).all()
     return categories
 
 
@@ -502,6 +508,248 @@ async def update_account(
     db.commit()
     db.refresh(account)
     return account
+
+
+# ============== BUDGETS ==============
+
+@router.get("/budgets", response_model=list[BudgetResponse])
+async def list_budgets(
+    year: Optional[int] = None,
+    is_active: Optional[bool] = None,
+    current_user: User = Depends(get_current_user),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """List budgets for the church."""
+    query = db.query(Budget).filter(Budget.church_id == church_id)
+    if year is not None:
+        query = query.filter(Budget.year == year)
+    if is_active is not None:
+        query = query.filter(Budget.is_active == is_active)
+    budgets = query.order_by(Budget.year.desc(), Budget.name).all()
+
+    result = []
+    for budget in budgets:
+        data = BudgetResponse.model_validate(budget)
+        for item in data.items:
+            if item.income_category_id:
+                cat = db.query(IncomeCategory).get(item.income_category_id)
+                item.category_name = cat.name if cat else None
+            elif item.expense_category_id:
+                cat = db.query(ExpenseCategory).get(item.expense_category_id)
+                item.category_name = cat.name if cat else None
+        result.append(data)
+    return result
+
+
+@router.post("/budgets", response_model=BudgetResponse, status_code=status.HTTP_201_CREATED)
+async def create_budget(
+    budget_data: BudgetCreate,
+    current_user: User = Depends(require_finance),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Create a new budget with optional line items."""
+    budget = Budget(
+        church_id=church_id,
+        created_by=current_user.id,
+        name=budget_data.name,
+        description=budget_data.description,
+        year=budget_data.year,
+        start_date=budget_data.start_date,
+        end_date=budget_data.end_date,
+    )
+    db.add(budget)
+    db.flush()
+
+    for item_data in budget_data.items:
+        item = BudgetItem(budget_id=budget.id, **item_data.model_dump())
+        db.add(item)
+
+    db.commit()
+    db.refresh(budget)
+
+    data = BudgetResponse.model_validate(budget)
+    for item in data.items:
+        if item.income_category_id:
+            cat = db.query(IncomeCategory).get(item.income_category_id)
+            item.category_name = cat.name if cat else None
+        elif item.expense_category_id:
+            cat = db.query(ExpenseCategory).get(item.expense_category_id)
+            item.category_name = cat.name if cat else None
+    return data
+
+
+@router.get("/budgets/{budget_id}", response_model=BudgetResponse)
+async def get_budget(
+    budget_id: int,
+    current_user: User = Depends(get_current_user),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Get a specific budget with its items."""
+    budget = db.query(Budget).filter(
+        Budget.id == budget_id,
+        Budget.church_id == church_id
+    ).first()
+
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    data = BudgetResponse.model_validate(budget)
+    for item in data.items:
+        if item.income_category_id:
+            cat = db.query(IncomeCategory).get(item.income_category_id)
+            item.category_name = cat.name if cat else None
+        elif item.expense_category_id:
+            cat = db.query(ExpenseCategory).get(item.expense_category_id)
+            item.category_name = cat.name if cat else None
+    return data
+
+
+@router.put("/budgets/{budget_id}", response_model=BudgetResponse)
+async def update_budget(
+    budget_id: int,
+    budget_data: BudgetUpdate,
+    current_user: User = Depends(require_finance),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Update a budget."""
+    budget = db.query(Budget).filter(
+        Budget.id == budget_id,
+        Budget.church_id == church_id
+    ).first()
+
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    for field, value in budget_data.model_dump(exclude_unset=True).items():
+        setattr(budget, field, value)
+
+    db.commit()
+    db.refresh(budget)
+    return budget
+
+
+@router.delete("/budgets/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_budget(
+    budget_id: int,
+    current_user: User = Depends(require_finance),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Delete a budget and all its items."""
+    budget = db.query(Budget).filter(
+        Budget.id == budget_id,
+        Budget.church_id == church_id
+    ).first()
+
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    db.delete(budget)
+    db.commit()
+
+
+# ============== BUDGET ITEMS ==============
+
+@router.post("/budgets/{budget_id}/items", response_model=BudgetItemResponse, status_code=status.HTTP_201_CREATED)
+async def add_budget_item(
+    budget_id: int,
+    item_data: BudgetItemCreate,
+    current_user: User = Depends(require_finance),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Add a line item to a budget."""
+    budget = db.query(Budget).filter(
+        Budget.id == budget_id,
+        Budget.church_id == church_id
+    ).first()
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    item = BudgetItem(budget_id=budget_id, **item_data.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+
+    data = BudgetItemResponse.model_validate(item)
+    if item.income_category_id:
+        cat = db.query(IncomeCategory).get(item.income_category_id)
+        data.category_name = cat.name if cat else None
+    elif item.expense_category_id:
+        cat = db.query(ExpenseCategory).get(item.expense_category_id)
+        data.category_name = cat.name if cat else None
+    return data
+
+
+@router.put("/budgets/{budget_id}/items/{item_id}", response_model=BudgetItemResponse)
+async def update_budget_item(
+    budget_id: int,
+    item_id: int,
+    item_data: BudgetItemCreate,
+    current_user: User = Depends(require_finance),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Update a budget line item."""
+    budget = db.query(Budget).filter(
+        Budget.id == budget_id,
+        Budget.church_id == church_id
+    ).first()
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    item = db.query(BudgetItem).filter(
+        BudgetItem.id == item_id,
+        BudgetItem.budget_id == budget_id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Budget item not found")
+
+    for field, value in item_data.model_dump().items():
+        setattr(item, field, value)
+
+    db.commit()
+    db.refresh(item)
+
+    data = BudgetItemResponse.model_validate(item)
+    if item.income_category_id:
+        cat = db.query(IncomeCategory).get(item.income_category_id)
+        data.category_name = cat.name if cat else None
+    elif item.expense_category_id:
+        cat = db.query(ExpenseCategory).get(item.expense_category_id)
+        data.category_name = cat.name if cat else None
+    return data
+
+
+@router.delete("/budgets/{budget_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_budget_item(
+    budget_id: int,
+    item_id: int,
+    current_user: User = Depends(require_finance),
+    church_id: int = Depends(get_church_id),
+    db: Session = Depends(get_db)
+):
+    """Delete a budget line item."""
+    budget = db.query(Budget).filter(
+        Budget.id == budget_id,
+        Budget.church_id == church_id
+    ).first()
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+
+    item = db.query(BudgetItem).filter(
+        BudgetItem.id == item_id,
+        BudgetItem.budget_id == budget_id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Budget item not found")
+
+    db.delete(item)
+    db.commit()
 
 
 # ============== DASHBOARD/SUMMARY ==============
