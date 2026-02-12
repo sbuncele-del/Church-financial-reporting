@@ -1,0 +1,115 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e10]: ChurchMS
+      - navigation [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e13]
+          - text: Dashboard
+        - generic [ref=e15]:
+          - button "📊 Financial Health" [ref=e16] [cursor=pointer]:
+            - generic [ref=e17]:
+              - img [ref=e18]
+              - generic [ref=e20]: 📊 Financial Health
+            - img [ref=e21]
+          - generic [ref=e23]:
+            - link "Dashboard" [ref=e24] [cursor=pointer]:
+              - /url: /solar/resources/financial/dashboard
+              - img [ref=e25]
+              - text: Dashboard
+            - link "Income" [ref=e27] [cursor=pointer]:
+              - /url: /solar/resources/financial/income
+              - img [ref=e28]
+              - text: Income
+            - link "Expenses" [ref=e30] [cursor=pointer]:
+              - /url: /solar/resources/financial/expenses
+              - img [ref=e31]
+              - text: Expenses
+            - link "Budget" [ref=e33] [cursor=pointer]:
+              - /url: /solar/resources/financial/budget
+              - img [ref=e34]
+              - text: Budget
+            - link "Reports" [ref=e36] [cursor=pointer]:
+              - /url: /solar/resources/financial/reports
+              - img [ref=e37]
+              - text: Reports
+        - link "Settings" [ref=e39] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e40]
+          - text: Settings
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e46]: ET
+          - generic [ref=e47]:
+            - paragraph [ref=e48]: E2E Tester
+            - paragraph [ref=e49]: e2e@newchurch.org
+        - button "Sign Out" [ref=e50] [cursor=pointer]:
+          - img [ref=e51]
+          - text: Sign Out
+    - generic [ref=e53]:
+      - banner [ref=e54]:
+        - generic [ref=e56]: admin
+      - main [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - heading "Income" [level=1] [ref=e61]
+              - paragraph [ref=e62]: Track tithes, offerings, and donations
+            - button "Record Income" [active] [ref=e63] [cursor=pointer]:
+              - img [ref=e64]
+              - text: Record Income
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - paragraph [ref=e69]: Total Income
+              - paragraph [ref=e70]: R 0,00
+            - generic [ref=e71]: 0 transactions
+          - generic [ref=e73]:
+            - paragraph [ref=e74]: No income records yet
+            - button "Record your first income" [ref=e75] [cursor=pointer]
+          - generic [ref=e77]:
+            - heading "Record Income" [level=2] [ref=e79]
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - generic [ref=e82]: Category *
+                - combobox [ref=e83]:
+                  - option "Select category" [selected]
+              - generic [ref=e84]:
+                - generic [ref=e85]:
+                  - generic [ref=e86]: Amount *
+                  - spinbutton [ref=e87]
+                - generic [ref=e88]:
+                  - generic [ref=e89]: Date *
+                  - textbox [ref=e90]: 2026-02-11
+              - generic [ref=e91]:
+                - generic [ref=e92]: Donor
+                - combobox [ref=e93]:
+                  - option "Select donor (optional)" [selected]
+              - generic [ref=e94]:
+                - checkbox "Anonymous donation" [ref=e95]
+                - generic [ref=e96]: Anonymous donation
+              - generic [ref=e97]:
+                - generic [ref=e98]: Payment Method
+                - combobox [ref=e99]:
+                  - option "Cash" [selected]
+                  - option "Check"
+                  - option "Card"
+                  - option "Bank Transfer"
+                  - option "Online"
+                  - option "Other"
+              - generic [ref=e100]:
+                - generic [ref=e101]: Reference Number
+                - textbox "Check number, transaction ID, etc." [ref=e102]
+              - generic [ref=e103]:
+                - generic [ref=e104]: Description
+                - textbox "Additional notes..." [ref=e105]
+              - generic [ref=e106]:
+                - button "Cancel" [ref=e107] [cursor=pointer]
+                - button "Save" [ref=e108] [cursor=pointer]
+  - status [ref=e114]: Failed to load data
+```

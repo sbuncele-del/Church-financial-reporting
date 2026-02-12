@@ -32,13 +32,17 @@ class Settings(BaseSettings):
     # Auto-detect: Use PostgreSQL if DATABASE_URL starts with postgres, else SQLite
     USE_SQLITE: bool = not os.environ.get("DATABASE_URL", "").startswith("postgres")
     
-    # CORS - Allow all origins in production (update for security)
+    # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000", 
         "http://localhost:5173",
-        "https://*.vercel.app",  # Vercel preview deployments
+        "https://churchexc.co.za",
+        "https://www.churchexc.co.za",
+        "https://churchexc.org",
+        "https://www.churchexc.org",
+        "http://139.84.231.20",
     ]
-    CORS_ALLOW_ALL: bool = True  # Allow all origins for Vercel
+    CORS_ALLOW_ALL: bool = os.environ.get("CORS_ALLOW_ALL", "True").lower() == "true"
     
     # Email (for notifications)
     SMTP_HOST: Optional[str] = None

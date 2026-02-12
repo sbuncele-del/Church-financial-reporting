@@ -31,6 +31,7 @@ class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     phone: Optional[str] = None
+    church_name: Optional[str] = Field(None, min_length=1, max_length=255)
 
 
 # ============== UPDATE SCHEMAS ==============

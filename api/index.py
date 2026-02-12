@@ -487,7 +487,17 @@ class handler(BaseHTTPRequestHandler):
                     if user['id'] == user_id:
                         return user
             return None
-        return None  # DB mode handles this differently
+        # DB mode: look up user from session token
+        try:
+            conn = get_db()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT u.* FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.token = %s", (token,))
+            user = cur.fetchone()
+            cur.close()
+            conn.close()
+            return dict(user) if user else None
+        except Exception:
+            return None
 
     def do_GET(self):
         parsed = urlparse(self.path)

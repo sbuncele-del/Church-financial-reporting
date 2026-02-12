@@ -1,5 +1,12 @@
 import api from './api';
 import type { Member, MemberSummary, MemberStatus } from '../types';
+import { useAuthStore } from '../stores/authStore';
+
+const getChurchId = (): number => {
+  const user = useAuthStore.getState().user;
+  if (!user?.church_id) throw new Error('No church_id available');
+  return user.church_id;
+};
 
 interface MemberListResponse {
   members: Member[];
@@ -33,12 +40,16 @@ export const memberService = {
     status?: string;
     search?: string;
   }): Promise<MemberListResponse> {
-    const response = await api.get<MemberListResponse>('/members', { params });
+    const response = await api.get<MemberListResponse>('/members', {
+      params: { ...params, church_id: getChurchId() }
+    });
     return response.data;
   },
 
   async getMembersSummary(): Promise<MemberSummary[]> {
-    const response = await api.get<MemberSummary[]>('/members/summary');
+    const response = await api.get<MemberSummary[]>('/members/summary', {
+      params: { church_id: getChurchId() }
+    });
     return response.data;
   },
 

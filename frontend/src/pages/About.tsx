@@ -49,7 +49,7 @@ export default function About() {
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
               <SparklesIcon className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-lg tracking-tight">ChurchSOLAR</span>
+            <span className="font-bold text-lg tracking-tight">Church Excellence</span>
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-sm text-slate-300 hover:text-white transition">Sign in</Link>
@@ -165,7 +165,7 @@ export default function About() {
             <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center">
               <SparklesIcon className="h-4 w-4 text-white" />
             </div>
-            <span className="font-semibold text-slate-400">ChurchSOLAR</span>
+            <span className="font-semibold text-slate-400">Church Excellence</span>
           </div>
           <p>© {new Date().getFullYear()} All rights reserved.</p>
         </div>

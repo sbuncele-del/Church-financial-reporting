@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { authService } from './services/authService'
 
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout'
@@ -12,7 +14,6 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 
 // Dashboard Pages
-import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
 
 // Finance Pages (now under Resources)
@@ -62,6 +63,21 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const { isAuthenticated, setUser, token } = useAuthStore()
+
+  // Refresh user data from server on app load to ensure church_id and role are current
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      authService.getCurrentUser()
+        .then(user => {
+          setUser(user)
+        })
+        .catch(() => {
+          // Token might be expired - ignore, the interceptor will handle it
+        })
+    }
+  }, [isAuthenticated, token, setUser])
+
   return (
     <Routes>
       {/* Public Routes */}
@@ -78,7 +94,7 @@ function App() {
       <Route element={
         <ProtectedRoute><DashboardLayout /></ProtectedRoute>
       }>
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<FinancialDashboard />} />
         <Route path="/settings" element={<Settings />} />
         
         {/* SOLAR Framework - Main Routes */}

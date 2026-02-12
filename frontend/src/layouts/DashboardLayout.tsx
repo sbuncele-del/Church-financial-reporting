@@ -22,7 +22,6 @@ const navigation = [
     icon: CurrencyDollarIcon,
     color: 'amber',
     children: [
-      { name: 'Dashboard', href: '/solar/resources/financial/dashboard', icon: ChartBarIcon },
       { name: 'Income', href: '/solar/resources/financial/income', icon: ArrowTrendingUpIcon },
       { name: 'Expenses', href: '/solar/resources/financial/expenses', icon: ArrowTrendingDownIcon },
       { name: 'Budget', href: '/solar/resources/financial/budget', icon: ChartBarIcon },

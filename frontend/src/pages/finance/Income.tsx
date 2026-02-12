@@ -29,14 +29,13 @@ export default function IncomePage() {
       const [incomeData, categoryData, memberData] = await Promise.all([
         financeService.getIncomes({ per_page: 50 }),
         financeService.getIncomeCategories(),
-        memberService.getMembersSummary(),
+        memberService.getMembersSummary().catch(() => [] as MemberSummary[]),
       ]);
       console.log('[Income Page] Data loaded:', {
         incomes: incomeData.incomes.length,
         categories: categoryData.length,
         members: memberData.length
       });
-      console.log('[Income Page] Categories:', categoryData);
       setIncomes(incomeData.incomes);
       setTotalAmount(incomeData.total_amount);
       setCategories(categoryData);
