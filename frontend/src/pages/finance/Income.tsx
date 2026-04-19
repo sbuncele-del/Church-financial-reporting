@@ -8,6 +8,20 @@ import { memberService } from '../../services/memberService';
 import { formatCurrency } from '../../utils/currency';
 import type { Income, IncomeCategory, MemberSummary, IncomeCreate } from '../../types';
 
+// Fallback categories when backend is unreachable
+const FALLBACK_INCOME_CATEGORIES: IncomeCategory[] = [
+  { id: 1, church_id: 0, name: 'Tithes', description: 'Regular tithes from members', is_tax_deductible: true, is_active: true, sort_order: 1, created_at: '' },
+  { id: 2, church_id: 0, name: 'First Fruits', description: 'First fruits offerings', is_tax_deductible: true, is_active: true, sort_order: 2, created_at: '' },
+  { id: 3, church_id: 0, name: 'Regular Seed', description: 'Consistent seed sowing', is_tax_deductible: true, is_active: true, sort_order: 3, created_at: '' },
+  { id: 4, church_id: 0, name: 'Alms', description: 'Gifts to support the poor', is_tax_deductible: true, is_active: true, sort_order: 4, created_at: '' },
+  { id: 5, church_id: 0, name: 'Special Seed', description: 'One-time sacrificial seeds', is_tax_deductible: true, is_active: true, sort_order: 5, created_at: '' },
+  { id: 6, church_id: 0, name: 'Offerings', description: 'General offerings', is_tax_deductible: true, is_active: true, sort_order: 6, created_at: '' },
+  { id: 7, church_id: 0, name: 'Building Fund', description: 'Donations for building projects', is_tax_deductible: true, is_active: true, sort_order: 7, created_at: '' },
+  { id: 8, church_id: 0, name: 'Missions', description: 'Donations for mission work', is_tax_deductible: true, is_active: true, sort_order: 8, created_at: '' },
+  { id: 9, church_id: 0, name: 'Youth Ministry', description: 'Donations for youth programs', is_tax_deductible: true, is_active: true, sort_order: 9, created_at: '' },
+  { id: 10, church_id: 0, name: 'Other Income', description: 'Miscellaneous income', is_tax_deductible: false, is_active: true, sort_order: 99, created_at: '' },
+];
+
 export default function IncomePage() {
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [categories, setCategories] = useState<IncomeCategory[]>([]);
@@ -16,6 +30,7 @@ export default function IncomePage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<IncomeCreate>();
 
@@ -26,23 +41,50 @@ export default function IncomePage() {
   const loadData = async () => {
     try {
       console.log('[Income Page] Starting to load data...');
-      const [incomeData, categoryData, memberData] = await Promise.all([
+
+      // Load each resource independently so one failure doesn't block the others
+      const [incomeResult, categoryResult, memberResult] = await Promise.allSettled([
         financeService.getIncomes({ per_page: 50 }),
         financeService.getIncomeCategories(),
-        memberService.getMembersSummary().catch(() => [] as MemberSummary[]),
+        memberService.getMembersSummary(),
       ]);
-      console.log('[Income Page] Data loaded:', {
-        incomes: incomeData.incomes.length,
-        categories: categoryData.length,
-        members: memberData.length
-      });
-      setIncomes(incomeData.incomes);
-      setTotalAmount(incomeData.total_amount);
-      setCategories(categoryData);
-      setMembers(memberData);
+
+      // Income
+      if (incomeResult.status === 'fulfilled') {
+        setIncomes(incomeResult.value.incomes);
+        setTotalAmount(incomeResult.value.total_amount);
+      } else {
+        console.error('[Income Page] Failed to load income:', incomeResult.reason);
+      }
+
+      // Categories — use fallback when API fails
+      if (categoryResult.status === 'fulfilled' && categoryResult.value.length > 0) {
+        setCategories(categoryResult.value);
+        setUsingFallback(false);
+      } else {
+        console.warn('[Income Page] Using fallback categories');
+        setCategories(FALLBACK_INCOME_CATEGORIES);
+        setUsingFallback(true);
+      }
+
+      // Members
+      if (memberResult.status === 'fulfilled') {
+        setMembers(memberResult.value);
+      }
+
+      // Show a warning only if something failed
+      const failures = [incomeResult, categoryResult, memberResult].filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        toast.error('Some data failed to load — categories are available offline');
+      }
+
+      console.log('[Income Page] Data loaded');
     } catch (error) {
       console.error('[Income Page] Failed to load data:', error);
-      toast.error('Failed to load data');
+      // Even if everything fails, still provide fallback categories
+      setCategories(FALLBACK_INCOME_CATEGORIES);
+      setUsingFallback(true);
+      toast.error('Failed to load data — using offline categories');
     } finally {
       setLoading(false);
     }
@@ -111,6 +153,17 @@ export default function IncomePage() {
 
   return (
     <div className="space-y-6">
+      {/* Connectivity Warning */}
+      {usingFallback && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2 text-amber-800 text-sm">
+          <span className="font-medium">Offline mode:</span>
+          <span>Using default categories. Saved records will sync when the connection is restored.</span>
+          <button onClick={loadData} className="ml-auto text-amber-600 hover:text-amber-800 font-medium underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

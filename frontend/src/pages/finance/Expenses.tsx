@@ -7,6 +7,27 @@ import { financeService } from '../../services/financeService';
 import { formatCurrency } from '../../utils/currency';
 import type { Expense, ExpenseCategory, ExpenseCreate } from '../../types';
 
+// Fallback categories when backend is unreachable
+const FALLBACK_EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  { id: 1, church_id: 0, name: 'Senior Pastor Salary', sort_order: 1, is_active: true, created_at: '' },
+  { id: 2, church_id: 0, name: 'Staff Salaries', sort_order: 3, is_active: true, created_at: '' },
+  { id: 3, church_id: 0, name: 'Rent/Mortgage', sort_order: 10, is_active: true, created_at: '' },
+  { id: 4, church_id: 0, name: 'Electricity', sort_order: 11, is_active: true, created_at: '' },
+  { id: 5, church_id: 0, name: 'Water & Rates', sort_order: 12, is_active: true, created_at: '' },
+  { id: 6, church_id: 0, name: 'Security', sort_order: 13, is_active: true, created_at: '' },
+  { id: 7, church_id: 0, name: 'Cleaning & Maintenance', sort_order: 14, is_active: true, created_at: '' },
+  { id: 8, church_id: 0, name: 'Insurance', sort_order: 16, is_active: true, created_at: '' },
+  { id: 9, church_id: 0, name: 'Office Supplies', sort_order: 20, is_active: true, created_at: '' },
+  { id: 10, church_id: 0, name: 'Telephone & Internet', sort_order: 22, is_active: true, created_at: '' },
+  { id: 11, church_id: 0, name: 'Bank Charges', sort_order: 24, is_active: true, created_at: '' },
+  { id: 12, church_id: 0, name: 'Youth Ministry Expenses', sort_order: 30, is_active: true, created_at: '' },
+  { id: 13, church_id: 0, name: 'Missions Support', sort_order: 50, is_active: true, created_at: '' },
+  { id: 14, church_id: 0, name: 'Benevolence - Members', sort_order: 60, is_active: true, created_at: '' },
+  { id: 15, church_id: 0, name: 'Church Events', sort_order: 70, is_active: true, created_at: '' },
+  { id: 16, church_id: 0, name: 'Travel & Accommodation', sort_order: 82, is_active: true, created_at: '' },
+  { id: 17, church_id: 0, name: 'Miscellaneous Expenses', sort_order: 99, is_active: true, created_at: '' },
+];
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -14,6 +35,7 @@ export default function ExpensesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ExpenseCreate>();
 
@@ -23,15 +45,38 @@ export default function ExpensesPage() {
 
   const loadData = async () => {
     try {
-      const [expenseData, categoryData] = await Promise.all([
+      // Load each resource independently so one failure doesn't block the others
+      const [expenseResult, categoryResult] = await Promise.allSettled([
         financeService.getExpenses({ per_page: 50 }),
         financeService.getExpenseCategories(),
       ]);
-      setExpenses(expenseData.expenses);
-      setTotalAmount(expenseData.total_amount);
-      setCategories(categoryData);
+
+      // Expenses
+      if (expenseResult.status === 'fulfilled') {
+        setExpenses(expenseResult.value.expenses);
+        setTotalAmount(expenseResult.value.total_amount);
+      } else {
+        console.error('[Expenses Page] Failed to load expenses:', expenseResult.reason);
+      }
+
+      // Categories — use fallback when API fails
+      if (categoryResult.status === 'fulfilled' && categoryResult.value.length > 0) {
+        setCategories(categoryResult.value);
+        setUsingFallback(false);
+      } else {
+        console.warn('[Expenses Page] Using fallback categories');
+        setCategories(FALLBACK_EXPENSE_CATEGORIES);
+        setUsingFallback(true);
+      }
+
+      const failures = [expenseResult, categoryResult].filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        toast.error('Some data failed to load — categories are available offline');
+      }
     } catch (error) {
-      toast.error('Failed to load data');
+      setCategories(FALLBACK_EXPENSE_CATEGORIES);
+      setUsingFallback(true);
+      toast.error('Failed to load data — using offline categories');
     } finally {
       setLoading(false);
     }
@@ -100,6 +145,17 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Connectivity Warning */}
+      {usingFallback && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2 text-amber-800 text-sm">
+          <span className="font-medium">Offline mode:</span>
+          <span>Using default categories. Saved records will sync when the connection is restored.</span>
+          <button onClick={loadData} className="ml-auto text-amber-600 hover:text-amber-800 font-medium underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
