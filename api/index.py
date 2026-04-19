@@ -490,7 +490,7 @@ class handler(BaseHTTPRequestHandler):
         # DB mode: look up user from session token
         try:
             conn = get_db()
-            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur = get_dict_cursor(conn)
             cur.execute("SELECT u.* FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.token = %s", (token,))
             user = cur.fetchone()
             cur.close()
@@ -1186,11 +1186,18 @@ class handler(BaseHTTPRequestHandler):
 
                 if user and verify_password(password, user['password_hash']):
                     token = secrets.token_hex(32)
+                    refresh = secrets.token_hex(32)
+                    # Persist session token so subsequent API calls can authenticate
+                    cur.execute(
+                        "INSERT INTO sessions (token, user_id) VALUES (%s, %s)",
+                        (token, user['id'])
+                    )
+                    conn.commit()
                     user_data = dict(user)
                     del user_data['password_hash']
                     self.send_json({
                         "access_token": token,
-                        "refresh_token": secrets.token_hex(32),
+                        "refresh_token": refresh,
                         "token_type": "bearer",
                         "user": user_data
                     })
@@ -1272,8 +1279,13 @@ class handler(BaseHTTPRequestHandler):
                 user = cur.fetchone()
                 conn.commit()
                 
-                # Generate token and return
+                # Generate token, persist session, and return
                 token = secrets.token_urlsafe(32)
+                cur.execute(
+                    "INSERT INTO sessions (token, user_id) VALUES (%s, %s)",
+                    (token, user['id'])
+                )
+                conn.commit()
                 self.send_json({
                     "access_token": token,
                     "token_type": "bearer",
