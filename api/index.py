@@ -637,10 +637,13 @@ class handler(BaseHTTPRequestHandler):
             
             # Members Summary (for dropdowns)
             elif path == '/api/v1/members/summary':
-                user = self.get_auth_user()
-                church_id = user['church_id'] if user else query.get('church_id', [None])[0]
+                # Always prefer query params (frontend sends them); fall back to auth user
+                church_id = query.get('church_id', [None])[0]
                 if not church_id:
-                    self.send_json({"error": "Authentication or church_id is required"}, 400)
+                    user = self.get_auth_user()
+                    church_id = user.get('church_id') if user else None
+                if not church_id:
+                    self.send_json([], 200)  # Return empty list instead of 400
                     cur.close()
                     conn.close()
                     return
