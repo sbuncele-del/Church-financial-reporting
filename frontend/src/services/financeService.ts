@@ -214,35 +214,35 @@ export const financeService = {
 export const reportsService = {
   async getIncomeStatement(startDate: string, endDate: string) {
     const response = await api.get('/reports/income-statement', {
-      params: { start_date: startDate, end_date: endDate }
+      params: { start_date: startDate, end_date: endDate, church_id: getChurchId() }
     });
     return response.data;
   },
 
   async getMonthlyComparison(year: number) {
     const response = await api.get('/reports/monthly-comparison', {
-      params: { year }
+      params: { year, church_id: getChurchId() }
     });
     return response.data;
   },
 
   async getDonorStatement(memberId: number, startDate: string, endDate: string) {
     const response = await api.get(`/reports/donor-statement/${memberId}`, {
-      params: { start_date: startDate, end_date: endDate }
+      params: { start_date: startDate, end_date: endDate, church_id: getChurchId() }
     });
     return response.data;
   },
 
   async getTopDonors(startDate: string, endDate: string, limit: number = 10) {
     const response = await api.get('/reports/top-donors', {
-      params: { start_date: startDate, end_date: endDate, limit }
+      params: { start_date: startDate, end_date: endDate, limit, church_id: getChurchId() }
     });
     return response.data;
   },
 
   async exportTransactions(startDate: string, endDate: string, type: 'all' | 'income' | 'expense' = 'all') {
     const response = await api.get('/reports/export/transactions', {
-      params: { start_date: startDate, end_date: endDate, transaction_type: type },
+      params: { start_date: startDate, end_date: endDate, transaction_type: type, church_id: getChurchId() },
       responseType: 'blob'
     });
     return response.data;
