@@ -5,6 +5,7 @@ Version: 2.5.0 - Added POST handlers for income and expense entries
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import re
 import hashlib
 import hmac
 import secrets
