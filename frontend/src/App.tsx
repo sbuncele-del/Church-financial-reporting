@@ -16,6 +16,10 @@ import Register from './pages/auth/Register'
 // Dashboard Pages
 import Settings from './pages/Settings'
 
+// Platform / God's Eye Pages
+import PlatformDashboard from './pages/platform/PlatformDashboard'
+import ChurchDetail from './pages/platform/ChurchDetail'
+
 // Finance Pages (now under Resources)
 import Income from './pages/finance/Income'
 import Expenses from './pages/finance/Expenses'
@@ -53,12 +57,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 // Public Route Component (redirects to dashboard if logged in)
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore()
-  
+  const { isAuthenticated, user } = useAuthStore()
+
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={user?.role === 'super_admin' ? '/platform' : '/dashboard'} replace />
   }
-  
+
+  return <>{children}</>
+}
+
+// Super Admin only route
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role !== 'super_admin') return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -137,6 +149,14 @@ function App() {
         <Route path="/members" element={<Navigate to="/solar/love-care/members" replace />} />
       </Route>
       
+      {/* Platform / God's Eye Routes — super_admin only */}
+      <Route element={
+        <SuperAdminRoute><DashboardLayout /></SuperAdminRoute>
+      }>
+        <Route path="/platform" element={<PlatformDashboard />} />
+        <Route path="/platform/church/:id" element={<ChurchDetail />} />
+      </Route>
+
       {/* Landing Page - only for unauthenticated users */}
       <Route path="/" element={
         <PublicRoute><Landing /></PublicRoute>

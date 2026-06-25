@@ -669,6 +669,215 @@ class handler(BaseHTTPRequestHandler):
                     u = cur.fetchone()
                     self.send_json(dict(u) if u else {"error": "User not found"}, 200 if u else 404)
 
+            # ── PLATFORM / GOD'S EYE ENDPOINTS ──────────────────────────
+            elif path == '/api/v1/platform/overview':
+                user = self.get_auth_user()
+                if not user or user.get('role') != 'super_admin':
+                    self.send_json({"error": "Super admin access required"}, 403)
+                else:
+                    from datetime import date
+                    today = date.today()
+                    month_start = today.replace(day=1).isoformat()
+                    year_start  = today.replace(month=1, day=1).isoformat()
+
+                    cur.execute("SELECT COUNT(*) AS n FROM churches")
+                    total_churches = cur.fetchone()['n']
+
+                    cur.execute("SELECT COUNT(*) AS n FROM users WHERE role != 'super_admin'")
+                    total_users = cur.fetchone()['n']
+
+                    cur.execute("SELECT COUNT(*) AS n FROM members")
+                    total_members = cur.fetchone()['n']
+
+                    cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM income_entries WHERE date >= %s", (month_start,))
+                    income_mtd = float(cur.fetchone()['t'])
+
+                    cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM expense_entries WHERE date >= %s", (month_start,))
+                    expenses_mtd = float(cur.fetchone()['t'])
+
+                    cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM income_entries WHERE date >= %s", (year_start,))
+                    income_ytd = float(cur.fetchone()['t'])
+
+                    cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM expense_entries WHERE date >= %s", (year_start,))
+                    expenses_ytd = float(cur.fetchone()['t'])
+
+                    self.send_json({
+                        "total_churches": total_churches,
+                        "total_users": total_users,
+                        "total_members": total_members,
+                        "income_mtd": income_mtd,
+                        "expenses_mtd": expenses_mtd,
+                        "net_mtd": income_mtd - expenses_mtd,
+                        "income_ytd": income_ytd,
+                        "expenses_ytd": expenses_ytd,
+                        "net_ytd": income_ytd - expenses_ytd,
+                    })
+
+            elif path == '/api/v1/platform/churches':
+                user = self.get_auth_user()
+                if not user or user.get('role') != 'super_admin':
+                    self.send_json({"error": "Super admin access required"}, 403)
+                else:
+                    from datetime import date
+                    today = date.today()
+                    month_start = today.replace(day=1).isoformat()
+                    year_start  = today.replace(month=1, day=1).isoformat()
+
+                    cur.execute("SELECT id, name, city, country, created_at FROM churches ORDER BY name")
+                    churches_raw = cur.fetchall()
+                    result = []
+                    for c in churches_raw:
+                        ch = dict(c)
+                        cid = ch['id']
+
+                        cur.execute("SELECT COUNT(*) AS n FROM members WHERE church_id=%s", (cid,))
+                        ch['member_count'] = cur.fetchone()['n']
+
+                        cur.execute("SELECT COUNT(*) AS n FROM users WHERE church_id=%s AND role!='super_admin'", (cid,))
+                        ch['user_count'] = cur.fetchone()['n']
+
+                        cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM income_entries WHERE church_id=%s AND date>=%s", (cid, month_start))
+                        ch['income_mtd'] = float(cur.fetchone()['t'])
+
+                        cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM expense_entries WHERE church_id=%s AND date>=%s", (cid, month_start))
+                        ch['expenses_mtd'] = float(cur.fetchone()['t'])
+
+                        ch['net_mtd'] = ch['income_mtd'] - ch['expenses_mtd']
+
+                        cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM income_entries WHERE church_id=%s AND date>=%s", (cid, year_start))
+                        ch['income_ytd'] = float(cur.fetchone()['t'])
+
+                        cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM expense_entries WHERE church_id=%s AND date>=%s", (cid, year_start))
+                        ch['expenses_ytd'] = float(cur.fetchone()['t'])
+
+                        ch['net_ytd'] = ch['income_ytd'] - ch['expenses_ytd']
+                        result.append(ch)
+                    self.send_json(result)
+
+            elif path.startswith('/api/v1/platform/church/'):
+                user = self.get_auth_user()
+                if not user or user.get('role') != 'super_admin':
+                    self.send_json({"error": "Super admin access required"}, 403)
+                else:
+                    parts = path.split('/')
+                    # /api/v1/platform/church/{id}/summary|income|expenses|income-statement
+                    church_id = parts[5] if len(parts) > 5 else None
+                    sub = parts[6] if len(parts) > 6 else 'summary'
+
+                    if not church_id:
+                        self.send_json({"error": "church_id required"}, 400)
+                    elif sub == 'summary':
+                        from datetime import date
+                        today = date.today()
+                        month_start = today.replace(day=1).isoformat()
+                        year_start  = today.replace(month=1, day=1).isoformat()
+
+                        cur.execute("SELECT id, name, city, country, created_at FROM churches WHERE id=%s", (church_id,))
+                        church = cur.fetchone()
+                        if not church:
+                            self.send_json({"error": "Church not found"}, 404)
+                        else:
+                            ch = dict(church)
+                            cur.execute("SELECT COUNT(*) AS n FROM members WHERE church_id=%s", (church_id,))
+                            ch['member_count'] = cur.fetchone()['n']
+                            cur.execute("SELECT COUNT(*) AS n FROM users WHERE church_id=%s", (church_id,))
+                            ch['user_count'] = cur.fetchone()['n']
+                            cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM income_entries WHERE church_id=%s AND date>=%s", (church_id, month_start))
+                            ch['income_mtd'] = float(cur.fetchone()['t'])
+                            cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM expense_entries WHERE church_id=%s AND date>=%s", (church_id, month_start))
+                            ch['expenses_mtd'] = float(cur.fetchone()['t'])
+                            ch['net_mtd'] = ch['income_mtd'] - ch['expenses_mtd']
+                            cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM income_entries WHERE church_id=%s AND date>=%s", (church_id, year_start))
+                            ch['income_ytd'] = float(cur.fetchone()['t'])
+                            cur.execute("SELECT COALESCE(SUM(amount),0) AS t FROM expense_entries WHERE church_id=%s AND date>=%s", (church_id, year_start))
+                            ch['expenses_ytd'] = float(cur.fetchone()['t'])
+                            ch['net_ytd'] = ch['income_ytd'] - ch['expenses_ytd']
+                            self.send_json(ch)
+
+                    elif sub == 'income':
+                        start = query.get('start_date', [date.today().replace(day=1).isoformat() if True else ''])[0] if True else ''
+                        end   = query.get('end_date', [date.today().isoformat()])[0]
+                        from datetime import date as dt
+                        if not start:
+                            start = dt.today().replace(day=1).isoformat()
+                        if not end:
+                            end = dt.today().isoformat()
+                        cur.execute("""
+                            SELECT ie.id, ie.amount, ie.date, ie.payment_method, ie.description,
+                                   ie.is_anonymous, ic.name AS category
+                            FROM income_entries ie
+                            LEFT JOIN income_categories ic ON ie.category_id = ic.id
+                            WHERE ie.church_id=%s AND ie.date>=%s AND ie.date<=%s
+                            ORDER BY ie.date DESC
+                        """, (church_id, start, end))
+                        rows = [dict(r) for r in cur.fetchall()]
+                        self.send_json(rows)
+
+                    elif sub == 'expenses':
+                        start = query.get('start_date', [''])[0]
+                        end   = query.get('end_date', [''])[0]
+                        from datetime import date as dt
+                        if not start:
+                            start = dt.today().replace(day=1).isoformat()
+                        if not end:
+                            end = dt.today().isoformat()
+                        cur.execute("""
+                            SELECT ee.id, ee.amount, ee.date, ee.payment_method, ee.vendor, ee.description,
+                                   ec.name AS category
+                            FROM expense_entries ee
+                            LEFT JOIN expense_categories ec ON ee.category_id = ec.id
+                            WHERE ee.church_id=%s AND ee.date>=%s AND ee.date<=%s
+                            ORDER BY ee.date DESC
+                        """, (church_id, start, end))
+                        rows = [dict(r) for r in cur.fetchall()]
+                        self.send_json(rows)
+
+                    elif sub == 'income-statement':
+                        start = query.get('start_date', [''])[0]
+                        end   = query.get('end_date', [''])[0]
+                        from datetime import date as dt
+                        if not start: start = dt.today().replace(month=1, day=1).isoformat()
+                        if not end:   end   = dt.today().isoformat()
+
+                        cur.execute("""
+                            SELECT ic.name AS category, COALESCE(SUM(ie.amount),0) AS amount
+                            FROM income_categories ic
+                            LEFT JOIN income_entries ie ON ic.id=ie.category_id
+                                AND ie.church_id=%s AND ie.date>=%s AND ie.date<=%s
+                            WHERE ic.church_id=%s
+                            GROUP BY ic.name HAVING COALESCE(SUM(ie.amount),0)>0
+                            ORDER BY amount DESC
+                        """, (church_id, start, end, church_id))
+                        inc = cur.fetchall()
+                        total_inc = sum(float(r['amount']) for r in inc)
+
+                        cur.execute("""
+                            SELECT ec.name AS category, COALESCE(SUM(ee.amount),0) AS amount
+                            FROM expense_categories ec
+                            LEFT JOIN expense_entries ee ON ec.id=ee.category_id
+                                AND ee.church_id=%s AND ee.date>=%s AND ee.date<=%s
+                            WHERE ec.church_id=%s
+                            GROUP BY ec.name HAVING COALESCE(SUM(ee.amount),0)>0
+                            ORDER BY amount DESC
+                        """, (church_id, start, end, church_id))
+                        exp = cur.fetchall()
+                        total_exp = sum(float(r['amount']) for r in exp)
+
+                        self.send_json({
+                            "report_type": "Income Statement",
+                            "period": {"start": start, "end": end},
+                            "income": [{"category": r['category'], "amount": float(r['amount'])} for r in inc],
+                            "expenses": [{"category": r['category'], "amount": float(r['amount'])} for r in exp],
+                            "summary": {
+                                "total_income": total_inc,
+                                "total_expenses": total_exp,
+                                "net_income": total_inc - total_exp,
+                            }
+                        })
+                    else:
+                        self.send_json({"error": "Unknown sub-resource"}, 404)
+            # ── END PLATFORM ENDPOINTS ────────────────────────────────────
+
             # List Churches
             elif path == '/api/v1/churches':
                 cur.execute("SELECT * FROM churches ORDER BY name")
