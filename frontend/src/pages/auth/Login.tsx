@@ -19,7 +19,7 @@ export default function Login() {
       const response = await authService.login(data);
       login(response.user, response.access_token, response.refresh_token || '');
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(response.user.role === 'super_admin' ? '/platform' : '/dashboard');
     } catch (error: any) {
       console.error('[Login Error]', error);
       const errorData = error.response?.data;
@@ -102,11 +102,15 @@ export default function Login() {
         </button>
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="mt-6 space-y-3 text-center">
+        <p className="text-sm text-gray-500">
+          Forgot your password?{' '}
+          <span className="text-gray-600 font-medium">Contact your church admin to reset it.</span>
+        </p>
         <p className="text-sm text-gray-600">
           Don't have an account?{' '}
           <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-            Create one
+            Register your church
           </Link>
         </p>
       </div>

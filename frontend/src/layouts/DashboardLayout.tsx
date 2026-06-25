@@ -15,6 +15,7 @@ import {
   DocumentChartBarIcon,
   BuildingLibraryIcon,
   GlobeAltIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -30,6 +31,7 @@ const navigation = [
       { name: 'Reports', href: '/solar/resources/financial/reports', icon: DocumentChartBarIcon },
     ],
   },
+  { name: 'Users', href: '/settings/users', icon: UsersIcon, adminOnly: true },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
@@ -140,7 +142,7 @@ export default function DashboardLayout() {
             </>
           ) : (
             // Standard church user nav
-            navigation.map((item) => (
+            navigation.filter((item: any) => !item.adminOnly || user?.role === 'admin').map((item) => (
               item.children ? (
                 <div key={item.name}>
                   <button

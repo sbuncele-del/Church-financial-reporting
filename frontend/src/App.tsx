@@ -15,6 +15,7 @@ import Register from './pages/auth/Register'
 
 // Dashboard Pages
 import Settings from './pages/Settings'
+import Users from './pages/settings/Users'
 
 // Platform / God's Eye Pages
 import PlatformDashboard from './pages/platform/PlatformDashboard'
@@ -108,6 +109,7 @@ function App() {
       }>
         <Route path="/dashboard" element={<FinancialDashboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/users" element={<Users />} />
         
         {/* SOLAR Framework - Main Routes */}
         <Route path="/solar" element={<SOLARDashboard />} />

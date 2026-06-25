@@ -656,6 +656,21 @@ class handler(BaseHTTPRequestHandler):
                 members = cur.fetchall()
                 self.send_json([dict(m) for m in members])
             
+            # List users in church (admin only)
+            elif path == '/api/v1/users':
+                auth_user = self.get_auth_user()
+                if not auth_user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                elif auth_user['role'] not in ('admin', 'super_admin'):
+                    self.send_json({"error": "Admin access required"}, 403)
+                else:
+                    cur.execute("""
+                        SELECT id, email, first_name, last_name, role, is_active, created_at
+                        FROM users WHERE church_id = %s ORDER BY first_name, last_name
+                    """, (auth_user['church_id'],))
+                    rows = cur.fetchall()
+                    self.send_json([dict(r) for r in rows])
+
             # Current user profile
             elif path == '/api/v1/users/me':
                 user = self.get_auth_user()
@@ -1402,21 +1417,60 @@ class handler(BaseHTTPRequestHandler):
         try:
             cur = get_dict_cursor(conn)
             
+            # Admin: create a new user in the church
+            if path == '/api/v1/users':
+                auth_user = self.get_auth_user()
+                if not auth_user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                elif auth_user['role'] not in ('admin', 'super_admin'):
+                    self.send_json({"error": "Admin access required"}, 403)
+                else:
+                    email = data.get('email', '').strip().lower()
+                    password = data.get('password', '')
+                    first_name = data.get('first_name', '').strip()
+                    last_name = data.get('last_name', '').strip()
+                    role = data.get('role', 'member')
+                    if not all([email, password, first_name, last_name]):
+                        self.send_json({"error": "Email, password, first name and last name are required"}, 400)
+                    elif role not in ('admin', 'finance', 'leader', 'member'):
+                        self.send_json({"error": "Invalid role"}, 400)
+                    elif len(password) < 6:
+                        self.send_json({"error": "Password must be at least 6 characters"}, 400)
+                    else:
+                        try:
+                            password_hash = hash_password(password)
+                            cur.execute("""
+                                INSERT INTO users (email, password_hash, first_name, last_name, role, church_id)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                RETURNING id, email, first_name, last_name, role, church_id, is_active, created_at
+                            """, (email, password_hash, first_name, last_name, role, auth_user['church_id']))
+                            conn.commit()
+                            new_user = cur.fetchone()
+                            self.send_json(dict(new_user), 201)
+                        except Exception as e:
+                            conn.rollback()
+                            if 'duplicate key' in str(e) and 'email' in str(e):
+                                self.send_json({"error": "A user with this email already exists"}, 409)
+                            else:
+                                self.send_json({"error": str(e)}, 500)
+
             # Login
-            if path == '/api/v1/auth/login':
+            elif path == '/api/v1/auth/login':
                 email = data.get('email', '')
                 password = data.get('password', '')
 
                 cur.execute("""
-                    SELECT id, email, password_hash, first_name, last_name, role, church_id, is_active
-                    FROM users WHERE email = %s
+                    SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name,
+                           u.role, u.church_id, u.is_active, c.name AS church_name
+                    FROM users u
+                    LEFT JOIN churches c ON c.id = u.church_id
+                    WHERE u.email = %s
                 """, (email,))
                 user = cur.fetchone()
 
                 if user and verify_password(password, user['password_hash']):
                     token = secrets.token_hex(32)
                     refresh = secrets.token_hex(32)
-                    # Persist session token so subsequent API calls can authenticate
                     cur.execute(
                         "INSERT INTO sessions (token, user_id) VALUES (%s, %s)",
                         (token, user['id'])
@@ -1431,10 +1485,7 @@ class handler(BaseHTTPRequestHandler):
                         "user": user_data
                     })
                 else:
-                    # Invalid credentials - return error
-                    self.send_json({
-                        "error": "Invalid email or password"
-                    }, 401)
+                    self.send_json({"error": "Invalid email or password"}, 401)
             
             # Register
             elif path == '/api/v1/auth/register':
@@ -1818,8 +1869,45 @@ class handler(BaseHTTPRequestHandler):
         try:
             cur = get_dict_cursor(conn)
             
+            # Admin: update a user (role, active status, password reset)
+            if re.match(r'^/api/v1/users/\d+$', path):
+                user_id = int(path.split('/')[-1])
+                auth_user = self.get_auth_user()
+                if not auth_user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                elif auth_user['role'] not in ('admin', 'super_admin'):
+                    self.send_json({"error": "Admin access required"}, 403)
+                else:
+                    cur.execute("SELECT id, church_id FROM users WHERE id = %s", (user_id,))
+                    target = cur.fetchone()
+                    if not target or (auth_user['role'] != 'super_admin' and target['church_id'] != auth_user['church_id']):
+                        self.send_json({"error": "User not found"}, 404)
+                    else:
+                        updates, values = [], []
+                        if 'first_name' in data:
+                            updates.append("first_name = %s"); values.append(data['first_name'])
+                        if 'last_name' in data:
+                            updates.append("last_name = %s"); values.append(data['last_name'])
+                        if 'role' in data and data['role'] in ('admin', 'finance', 'leader', 'member'):
+                            updates.append("role = %s"); values.append(data['role'])
+                        if 'is_active' in data:
+                            updates.append("is_active = %s"); values.append(bool(data['is_active']))
+                        if 'password' in data and data['password']:
+                            updates.append("password_hash = %s"); values.append(hash_password(data['password']))
+                        if not updates:
+                            self.send_json({"error": "No fields to update"}, 400)
+                        else:
+                            values.append(user_id)
+                            cur.execute(
+                                f"UPDATE users SET {', '.join(updates)} WHERE id = %s RETURNING id, email, first_name, last_name, role, is_active",
+                                tuple(values)
+                            )
+                            conn.commit()
+                            updated = cur.fetchone()
+                            self.send_json(dict(updated) if updated else {"error": "Update failed"})
+
             # Update Assessment Scores
-            if '/api/v1/solar/assessments/' in path and '/scores' in path:
+            elif '/api/v1/solar/assessments/' in path and '/scores' in path:
                 assessment_id = path.split('/')[-2]
 
                 # Calculate overall score
