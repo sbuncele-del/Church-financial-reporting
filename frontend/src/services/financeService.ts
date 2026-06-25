@@ -148,6 +148,11 @@ export const financeService = {
     return response.data;
   },
 
+  async approveExpense(id: number): Promise<Expense> {
+    const response = await api.put<Expense>(`/finance/expenses/${id}`, { is_approved: true });
+    return response.data;
+  },
+
   async deleteExpense(id: number): Promise<void> {
     await api.delete(`/finance/expenses/${id}`);
   },

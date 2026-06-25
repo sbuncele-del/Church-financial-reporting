@@ -1690,11 +1690,14 @@ class handler(BaseHTTPRequestHandler):
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
                 
+                # Auto-approve when admin or finance user records the expense
+                auth_user = self.get_auth_user()
+                auto_approve = auth_user and auth_user.get('role') in ('admin', 'finance')
                 cur.execute("""
-                    INSERT INTO expense_entries (church_id, category_id, amount, description, date)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO expense_entries (church_id, category_id, amount, description, date, is_approved)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING *
-                """, (church_id, category_id, amount, description, date))
+                """, (church_id, category_id, amount, description, date, auto_approve))
                 entry = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(entry))
@@ -1984,6 +1987,41 @@ class handler(BaseHTTPRequestHandler):
                         item['category_name'] = cat['name'] if cat else None
                     conn.commit()
                     self.send_json(item)
+
+            # Approve / update expense entry
+            elif re.match(r'^/api/v1/finance/expenses/\d+$', path):
+                expense_id = int(path.split('/')[-1])
+                auth_user = self.get_auth_user()
+                if not auth_user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                elif auth_user['role'] not in ('admin', 'finance'):
+                    self.send_json({"error": "Admin or finance access required"}, 403)
+                else:
+                    cur.execute("SELECT id, church_id FROM expense_entries WHERE id = %s", (expense_id,))
+                    entry = cur.fetchone()
+                    if not entry or entry['church_id'] != auth_user['church_id']:
+                        self.send_json({"error": "Expense not found"}, 404)
+                    else:
+                        updates, values = [], []
+                        if 'is_approved' in data:
+                            updates.append("is_approved = %s"); values.append(bool(data['is_approved']))
+                        if 'amount' in data:
+                            updates.append("amount = %s"); values.append(data['amount'])
+                        if 'description' in data:
+                            updates.append("description = %s"); values.append(data['description'])
+                        if 'date' in data:
+                            updates.append("date = %s"); values.append(data['date'])
+                        if not updates:
+                            self.send_json({"error": "No fields to update"}, 400)
+                        else:
+                            values.append(expense_id)
+                            cur.execute(
+                                f"UPDATE expense_entries SET {', '.join(updates)} WHERE id = %s RETURNING *",
+                                tuple(values)
+                            )
+                            updated = cur.fetchone()
+                            conn.commit()
+                            self.send_json(dict(updated) if updated else {"error": "Update failed"})
 
             # Update budget
             elif '/api/v1/finance/budgets/' in path:

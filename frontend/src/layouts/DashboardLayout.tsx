@@ -16,6 +16,7 @@ import {
   BuildingLibraryIcon,
   GlobeAltIcon,
   UsersIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -33,6 +34,7 @@ const navigation = [
   },
   { name: 'Users', href: '/settings/users', icon: UsersIcon, adminOnly: true },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'Help & Guide', href: '/help', icon: QuestionMarkCircleIcon },
 ];
 
 const platformNavigation = [

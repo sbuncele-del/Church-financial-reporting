@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { financeService } from '../../services/financeService';
+import { useAuthStore } from '../../stores/authStore';
 import { formatCurrency } from '../../utils/currency';
 import type { Expense, ExpenseCategory, ExpenseCreate } from '../../types';
 
@@ -29,6 +30,8 @@ const FALLBACK_EXPENSE_CATEGORIES: ExpenseCategory[] = [
 ];
 
 export default function ExpensesPage() {
+  const { user } = useAuthStore();
+  const canApprove = user?.role === 'admin' || user?.role === 'finance';
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,13 +119,23 @@ export default function ExpensesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this expense record?')) return;
-    
+
     try {
       await financeService.deleteExpense(id);
       toast.success('Expense deleted successfully');
       loadData();
     } catch (error) {
       toast.error('Failed to delete expense');
+    }
+  };
+
+  const handleApprove = async (id: number) => {
+    try {
+      await financeService.approveExpense(id);
+      toast.success('Expense approved');
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, is_approved: true } : e));
+    } catch (error) {
+      toast.error('Failed to approve expense');
     }
   };
 
@@ -225,6 +238,15 @@ export default function ExpensesPage() {
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
+                        {canApprove && !expense.is_approved && (
+                          <button
+                            onClick={() => handleApprove(expense.id)}
+                            className="p-1 hover:bg-green-50 rounded"
+                            title="Approve expense"
+                          >
+                            <CheckIcon className="w-4 h-4 text-green-600" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(expense)}
                           className="p-1 hover:bg-gray-100 rounded"
