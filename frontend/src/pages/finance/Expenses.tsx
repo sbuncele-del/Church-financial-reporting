@@ -210,7 +210,8 @@ export default function ExpensesPage() {
                 <tr>
                   <th>Date</th>
                   <th>Category</th>
-                  <th>Payee</th>
+                  <th>Payee / Description</th>
+                  <th>Method</th>
                   <th>Amount</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -223,7 +224,16 @@ export default function ExpensesPage() {
                     <td>
                       <span className="badge badge-warning">{expense.category_name}</span>
                     </td>
-                    <td>{expense.payee_name}</td>
+                    <td>
+                      <div>
+                        <p className="font-medium text-gray-900">{expense.payee_name || <span className="text-gray-400 italic">—</span>}</p>
+                        {expense.description && <p className="text-xs text-gray-400 mt-0.5">{expense.description}</p>}
+                        {expense.reference_number && <p className="text-xs text-gray-400">Ref: {expense.reference_number}</p>}
+                      </div>
+                    </td>
+                    <td className="capitalize text-gray-600 text-sm">
+                      {(expense.payment_method || '—').replace('_', ' ')}
+                    </td>
                     <td className="font-semibold text-red-600">
                       {formatCurrency(expense.amount)}
                     </td>

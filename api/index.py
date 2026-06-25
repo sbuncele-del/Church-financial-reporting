@@ -2039,14 +2039,21 @@ class handler(BaseHTTPRequestHandler):
                         self.send_json({"error": "Expense not found"}, 404)
                     else:
                         updates, values = [], []
-                        if 'is_approved' in data:
-                            updates.append("is_approved = %s"); values.append(bool(data['is_approved']))
-                        if 'amount' in data:
-                            updates.append("amount = %s"); values.append(data['amount'])
-                        if 'description' in data:
-                            updates.append("description = %s"); values.append(data['description'])
-                        if 'date' in data:
-                            updates.append("date = %s"); values.append(data['date'])
+                        for field, cast in [
+                            ('is_approved', bool),
+                            ('amount', float),
+                            ('description', str),
+                            ('date', str),
+                            ('payment_method', str),
+                            ('payee_name', str),
+                            ('payee_type', str),
+                            ('reference_number', str),
+                            ('invoice_number', str),
+                            ('category_id', int),
+                        ]:
+                            if field in data:
+                                updates.append(f"{field} = %s")
+                                values.append(cast(data[field]) if data[field] is not None else None)
                         if not updates:
                             self.send_json({"error": "No fields to update"}, 400)
                         else:
