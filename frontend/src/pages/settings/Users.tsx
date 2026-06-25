@@ -11,6 +11,7 @@ import {
   XMarkIcon,
   CheckCircleIcon,
   NoSymbolIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 
 const ROLES = ['admin', 'finance', 'leader', 'member'] as const;
@@ -43,12 +44,16 @@ type AddForm = { first_name: string; last_name: string; email: string; role: Rol
 type EditForm = { first_name: string; last_name: string; role: Role; is_active: boolean };
 type ResetForm = { password: string; confirm_password: string };
 
+interface Credentials { name: string; email: string; password: string; }
+
 export default function Users() {
   const { user: me } = useAuthStore();
   const [users, setUsers] = useState<ChurchUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<null | 'add' | 'edit' | 'reset'>(null);
+  const [modal, setModal] = useState<null | 'add' | 'edit' | 'reset' | 'credentials'>(null);
   const [selected, setSelected] = useState<ChurchUser | null>(null);
+  const [pendingCreds, setPendingCreds] = useState<Credentials | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const addForm = useForm<AddForm>();
   const editForm = useForm<EditForm>();
@@ -95,12 +100,23 @@ export default function Users() {
         role: data.role,
       });
       setUsers(prev => [...prev, u as ChurchUser]);
-      toast.success(`${u.first_name} added successfully`);
-      closeModal();
+      setPendingCreds({ name: `${data.first_name} ${data.last_name}`, email: data.email, password: data.password });
+      setCopied(false);
+      setModal('credentials');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Failed to add user');
     }
   });
+
+  const buildShareMessage = (creds: Credentials) =>
+    `Hi ${creds.name}, you've been added to ${me?.church_name || 'our church'} on Church Excellence.\n\nLog in at: https://churchexc.org\nEmail: ${creds.email}\nPassword: ${creds.password}\n\nContact your admin if you need any help.`;
+
+  const copyCredentials = async () => {
+    if (!pendingCreds) return;
+    await navigator.clipboard.writeText(buildShareMessage(pendingCreds));
+    setCopied(true);
+    toast.success('Copied to clipboard — paste into WhatsApp');
+  };
 
   const onEdit = editForm.handleSubmit(async (data) => {
     if (!selected) return;
@@ -339,6 +355,43 @@ export default function Users() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Share Credentials Modal */}
+      {modal === 'credentials' && pendingCreds && (
+        <Modal title="User Added — Share Credentials" onClose={() => { setModal(null); setPendingCreds(null); }}>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded-lg">
+              <CheckCircleIcon className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-green-800">
+                <strong>{pendingCreds.name}</strong> has been added. Send them these login details so they can access the system.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">
+              {buildShareMessage(pendingCreds)}
+            </div>
+
+            <button
+              onClick={copyCredentials}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                copied
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <ClipboardDocumentIcon className="w-4 h-4" />
+              {copied ? 'Copied!' : 'Copy for WhatsApp'}
+            </button>
+
+            <button
+              onClick={() => { setModal(null); setPendingCreds(null); }}
+              className="w-full btn btn-primary"
+            >
+              Done
+            </button>
+          </div>
         </Modal>
       )}
 
