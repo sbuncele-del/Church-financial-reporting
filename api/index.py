@@ -656,6 +656,19 @@ class handler(BaseHTTPRequestHandler):
                 members = cur.fetchall()
                 self.send_json([dict(m) for m in members])
             
+            # Current user profile
+            elif path == '/api/v1/users/me':
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                else:
+                    cur.execute("""
+                        SELECT id, email, first_name, last_name, role, church_id, is_active, created_at
+                        FROM users WHERE id = %s
+                    """, (user['id'],))
+                    u = cur.fetchone()
+                    self.send_json(dict(u) if u else {"error": "User not found"}, 200 if u else 404)
+
             # List Churches
             elif path == '/api/v1/churches':
                 cur.execute("SELECT * FROM churches ORDER BY name")
