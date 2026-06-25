@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /about
+
+# Keep auth and app pages out of index
+Disallow: /dashboard
+Disallow: /solar
+Disallow: /settings
+Disallow: /platform
+Disallow: /finance
+Disallow: /members
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://churchexc.org/sitemap.xml

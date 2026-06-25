@@ -15,7 +15,7 @@
     <meta name="keywords" content="church finance, church management software, church accounting, tithes tracking, offerings, church budget, financial reports, SOLAR framework, South Africa, church expenses, ministry budget" />
     <meta name="author" content="Church Excellence" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://churchexc.co.za/" />
+    <link rel="canonical" href="https://churchexc.org/" />
 
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website" />
@@ -40,6 +40,43 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="msapplication-TileColor" content="#0f172a" />
 
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Church Excellence",
+      "url": "https://churchexc.org",
+      "logo": "https://churchexc.org/favicon.svg",
+      "image": "https://churchexc.org/og-image.png",
+      "description": "Free church financial management software for South African churches. Track tithes, offerings, expenses, budgets and generate financial reports. Built on the SOLAR church health framework.",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "ZAR"
+      },
+      "featureList": [
+        "Track church tithes and offerings",
+        "Record and approve church expenses",
+        "Annual budget planning",
+        "Income statements and financial reports",
+        "Role-based access for admin, finance, leaders and members",
+        "SOLAR church health framework"
+      ],
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Churches and faith-based organisations in South Africa"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Masaphokati Technologies",
+        "url": "https://churchexc.org"
+      }
+    }
+    </script>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,13 +93,47 @@
   </head>
   <body>
     <div id="root">
-      <div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:Inter,sans-serif;">
-        <div style="text-align:center;">
-          <div style="width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#2dd4bf;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto;"></div>
-          <p style="margin-top:16px;color:#6b7280;">Loading Church Excellence...</p>
+      <!-- Static pre-render for SEO: Google reads this before executing JS -->
+      <div style="font-family:Inter,sans-serif;background:#0f172a;color:#f8fafc;min-height:100vh;padding:2rem;">
+        <header style="max-width:900px;margin:0 auto;padding:3rem 0 2rem;">
+          <h1 style="font-size:2.5rem;font-weight:800;margin:0 0 1rem;">Church Excellence — Church Financial Management Software</h1>
+          <p style="font-size:1.1rem;color:#94a3b8;max-width:600px;">Free church financial management for South African churches. Track tithes, offerings, expenses, budgets, and generate financial reports — all in one platform.</p>
+          <div style="margin-top:1.5rem;display:flex;gap:1rem;flex-wrap:wrap;">
+            <a href="/register" style="background:#2dd4bf;color:#0f172a;padding:.75rem 2rem;border-radius:999px;font-weight:700;text-decoration:none;">Get Started Free</a>
+            <a href="/login" style="border:1px solid #475569;color:#cbd5e1;padding:.75rem 2rem;border-radius:999px;text-decoration:none;">Sign In</a>
+          </div>
+        </header>
+        <main style="max-width:900px;margin:0 auto;">
+          <section>
+            <h2 style="font-size:1.75rem;font-weight:700;margin:2rem 0 1rem;">Features</h2>
+            <ul style="color:#94a3b8;line-height:2;padding-left:1.5rem;">
+              <li>Track tithes, offerings, first fruits, and all church income</li>
+              <li>Manage expenses across 40+ categories — pastoral salaries, utilities, ministry costs</li>
+              <li>Annual budget planning with actual vs budget variance tracking</li>
+              <li>Generate income statements and financial reports for leadership</li>
+              <li>Role-based access: Admin, Finance Officer, Leader, Member</li>
+              <li>SOLAR church health framework assessment</li>
+              <li>Built for South African churches — amounts in South African Rand (ZAR)</li>
+              <li>100% free — no credit card required</li>
+            </ul>
+          </section>
+          <section>
+            <h2 style="font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;">Church Financial Management Made Simple</h2>
+            <p style="color:#94a3b8;line-height:1.8;">Church Excellence is a free cloud-based church accounting and financial management system designed for South African churches. Whether you are a small community church or a large congregation, our platform helps you maintain financial transparency, accountability, and sound stewardship of Kingdom resources.</p>
+          </section>
+          <section>
+            <h2 style="font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;">Who Is It For?</h2>
+            <p style="color:#94a3b8;line-height:1.8;">Church Excellence is built for pastors, church administrators, finance officers, and treasurers who need a simple, secure way to manage church finances. It is ideal for any church in South Africa that wants to track income, control spending, and report transparently to their congregation and leadership.</p>
+          </section>
+        </main>
+        <div style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:9999;" id="js-loading">
+          <div style="text-align:center;">
+            <div style="width:40px;height:40px;border:4px solid #1e293b;border-top-color:#2dd4bf;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto;"></div>
+            <p style="margin-top:16px;color:#6b7280;">Loading Church Excellence...</p>
+          </div>
         </div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
       </div>
-      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

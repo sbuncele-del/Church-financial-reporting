@@ -2,13 +2,14 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { HelmetProvider } from 'react-helmet-async'
 import App from './App'
 import './index.css'
 
-console.log('Church Excellence loading...');
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const root = ReactDOM.createRoot(document.getElementById('root')!)
+root.render(
   <React.StrictMode>
+    <HelmetProvider>
     <BrowserRouter>
       <App />
       <Toaster 
@@ -34,6 +35,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         }}
       />
     </BrowserRouter>
+    </HelmetProvider>
   </React.StrictMode>,
 )
+
+// Remove the static SEO overlay once React has mounted
+const overlay = document.getElementById('js-loading')
+if (overlay) overlay.remove()
 // Build: 1769461263

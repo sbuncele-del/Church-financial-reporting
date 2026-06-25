@@ -1,8 +1,15 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { ArrowRightIcon, ChartBarIcon, CurrencyDollarIcon, DocumentChartBarIcon, ShieldCheckIcon, CheckCircleIcon, UserGroupIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 
 export default function Landing() {
   return (
+    <>
+    <Helmet>
+      <title>Church Excellence | Free Church Financial Management Software — South Africa</title>
+      <meta name="description" content="Free church financial management software for South African churches. Track tithes, offerings, expenses, budgets and generate reports. 100% free. No credit card needed." />
+      <link rel="canonical" href="https://churchexc.org/" />
+    </Helmet>
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50 overflow-hidden">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 backdrop-blur-lg bg-slate-950/80 border-b border-slate-800/50">
@@ -212,5 +219,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </>
   )
 }

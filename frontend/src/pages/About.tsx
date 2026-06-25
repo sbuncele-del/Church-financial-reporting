@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { ArrowRightIcon, ArrowLeftIcon, SparklesIcon, BuildingOffice2Icon, HeartIcon, ChartBarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 
 const solarDimensions = [
@@ -41,6 +42,12 @@ const solarDimensions = [
 
 export default function About() {
   return (
+    <>
+    <Helmet>
+      <title>About the SOLAR Framework | Church Excellence</title>
+      <meta name="description" content="The SOLAR Church Health Framework helps South African churches assess and grow across five dimensions: Spiritual Vitality, Organisational Governance, Love & Care, Advancement, and Resources." />
+      <link rel="canonical" href="https://churchexc.org/about" />
+    </Helmet>
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 backdrop-blur-lg bg-slate-950/80 border-b border-slate-800/50">
@@ -171,5 +178,6 @@ export default function About() {
         </div>
       </footer>
     </div>
+    </>
   )
 }
