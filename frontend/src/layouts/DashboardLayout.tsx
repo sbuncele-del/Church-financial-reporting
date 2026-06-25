@@ -79,12 +79,31 @@ export default function DashboardLayout() {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L2 8.5V11h2v9h6v-5h4v5h6v-9h2V8.5L12 2zm0 2.5l7 4.5v1H5v-1l7-4.5z"/>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-[#0f172a]">
+              <svg viewBox="0 0 64 64" className="w-10 h-10">
+                <defs>
+                  <linearGradient id="favbg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#0f172a"/>
+                    <stop offset="100%" stopColor="#1e3a8a"/>
+                  </linearGradient>
+                </defs>
+                <rect width="64" height="64" rx="14" fill="url(#favbg)"/>
+                <polygon points="32,9 21,25 32,25" fill="#f59e0b"/>
+                <polygon points="32,9 32,25 43,25" fill="#d4af37"/>
+                <polygon points="21,25 32,25 32,56" fill="#d4af37"/>
+                <polygon points="32,25 43,25 32,56" fill="#b45309"/>
+                <line x1="21" y1="25" x2="43" y2="25" stroke="#fef9ee" strokeWidth="1.2" strokeOpacity="0.8"/>
               </svg>
             </div>
-            <span className="font-semibold text-gray-900">ChurchMS</span>
+            <div>
+              <span className="font-semibold text-gray-900 text-sm leading-tight block">Church Excellence</span>
+              {!isSuperAdmin && user?.church_name && (
+                <span className="text-xs text-gray-400 leading-tight block truncate max-w-[140px]">{user.church_name}</span>
+              )}
+              {isSuperAdmin && (
+                <span className="text-xs text-indigo-500 leading-tight block">God's Eye Platform</span>
+              )}
+            </div>
           </div>
           <button 
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100"

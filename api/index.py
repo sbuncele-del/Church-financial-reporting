@@ -663,8 +663,12 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Authentication required"}, 401)
                 else:
                     cur.execute("""
-                        SELECT id, email, first_name, last_name, role, church_id, is_active, created_at
-                        FROM users WHERE id = %s
+                        SELECT u.id, u.email, u.first_name, u.last_name, u.role,
+                               u.church_id, u.is_active, u.created_at,
+                               c.name AS church_name
+                        FROM users u
+                        LEFT JOIN churches c ON c.id = u.church_id
+                        WHERE u.id = %s
                     """, (user['id'],))
                     u = cur.fetchone()
                     self.send_json(dict(u) if u else {"error": "User not found"}, 200 if u else 404)

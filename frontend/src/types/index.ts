@@ -11,6 +11,7 @@ export interface User {
   phone?: string;
   role: UserRole;
   church_id?: number;
+  church_name?: string;
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
