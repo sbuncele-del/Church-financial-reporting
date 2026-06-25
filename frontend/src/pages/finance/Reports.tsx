@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, startOfYear, endOfYear, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
@@ -21,6 +21,7 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<ReportType>('income-statement');
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const genRef = useRef(0);
   
   // Date filters
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -61,18 +62,20 @@ export default function ReportsPage() {
   ];
 
   const generateReport = async () => {
+    const gen = ++genRef.current;
     setLoading(true);
     try {
       let data;
-      switch (selectedReport) {
-        case 'weekly-report':
-          // Generate weekly report data
+      const reportType = selectedReport;
+      switch (reportType) {
+        case 'weekly-report': {
           const weekStart = selectedWeek;
           const weekEnd = format(endOfWeek(new Date(selectedWeek), { weekStartsOn: 0 }), 'yyyy-MM-dd');
           data = await reportsService.getIncomeStatement(weekStart, weekEnd);
           data.report_type = 'Weekly Financial Report';
           data.period = { start: weekStart, end: weekEnd };
           break;
+        }
         case 'income-statement':
           data = await reportsService.getIncomeStatement(startDate, endDate);
           break;
@@ -86,12 +89,14 @@ export default function ReportsPage() {
         default:
           return;
       }
+      // Discard stale responses — only apply the most recent request
+      if (gen !== genRef.current) return;
       setReportData(data);
-      toast.success('Report generated successfully');
+      toast.success('Report generated');
     } catch (error) {
-      toast.error('Failed to generate report');
+      if (gen === genRef.current) toast.error('Failed to generate report');
     } finally {
-      setLoading(false);
+      if (gen === genRef.current) setLoading(false);
     }
   };
 
@@ -384,25 +389,25 @@ export default function ReportsPage() {
                     <div className="p-4 bg-green-50 rounded-lg">
                       <p className="text-sm text-green-600">Total Income</p>
                       <p className="text-2xl font-bold text-green-700">
-                        {formatCurrency(reportData.summary.total_income)}
+                        {formatCurrency(reportData.summary?.total_income ?? 0)}
                       </p>
                     </div>
                     <div className="p-4 bg-red-50 rounded-lg">
                       <p className="text-sm text-red-600">Total Expenses</p>
                       <p className="text-2xl font-bold text-red-700">
-                        {formatCurrency(reportData.summary.total_expenses)}
+                        {formatCurrency(reportData.summary?.total_expenses ?? 0)}
                       </p>
                     </div>
                     <div className={`p-4 rounded-lg ${
-                      reportData.summary.net_income >= 0 ? 'bg-blue-50' : 'bg-orange-50'
+                      (reportData.summary?.net_income ?? 0) >= 0 ? 'bg-blue-50' : 'bg-orange-50'
                     }`}>
                       <p className={`text-sm ${
-                        reportData.summary.net_income >= 0 ? 'text-blue-600' : 'text-orange-600'
+                        (reportData.summary?.net_income ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'
                       }`}>Net Income</p>
                       <p className={`text-2xl font-bold ${
-                        reportData.summary.net_income >= 0 ? 'text-blue-700' : 'text-orange-700'
+                        (reportData.summary?.net_income ?? 0) >= 0 ? 'text-blue-700' : 'text-orange-700'
                       }`}>
-                        {formatCurrency(reportData.summary.net_income)}
+                        {formatCurrency(reportData.summary?.net_income ?? 0)}
                       </p>
                     </div>
                   </div>
@@ -412,8 +417,8 @@ export default function ReportsPage() {
                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                       <h4 className="font-semibold text-purple-800 mb-2">Weekly Highlights</h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
-                        {reportData.income.length > 0 ? (
-                          reportData.income.slice(0, 3).map((item: any, i: number) => (
+                        {(reportData.income || []).length > 0 ? (
+                          (reportData.income || []).slice(0, 3).map((item: any, i: number) => (
                             <div key={i}>
                               <span className="text-purple-600">{item.category}:</span>
                               <span className="ml-2 font-medium">{formatCurrency(item.amount)}</span>
@@ -426,7 +431,7 @@ export default function ReportsPage() {
                         )}
                         <div>
                           <span className="text-purple-600">Transactions:</span>
-                          <span className="ml-2 font-medium">{(reportData.income?.length || 0) + (reportData.expenses?.length || 0)}</span>
+                          <span className="ml-2 font-medium">{((reportData.income || []).length) + ((reportData.expenses || []).length)}</span>
                         </div>
                         <div>
                           <span className="text-purple-600">Weekly Status:</span>
@@ -441,9 +446,9 @@ export default function ReportsPage() {
                   {/* Income Details */}
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-3">Income by Category</h4>
-                    {reportData.income.length > 0 ? (
+                    {(reportData.income || []).length > 0 ? (
                       <div className="space-y-2">
-                        {reportData.income.map((item: any, i: number) => (
+                        {(reportData.income || []).map((item: any, i: number) => (
                           <div key={i} className="flex justify-between py-2 border-b border-gray-100">
                             <span className="text-gray-600">{item.category}</span>
                             <span className="font-medium text-green-600">{formatCurrency(item.amount)}</span>
@@ -458,9 +463,9 @@ export default function ReportsPage() {
                   {/* Expense Details */}
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-3">Expenses by Category</h4>
-                    {reportData.expenses.length > 0 ? (
+                    {(reportData.expenses || []).length > 0 ? (
                       <div className="space-y-2">
-                        {reportData.expenses.map((item: any, i: number) => (
+                        {(reportData.expenses || []).map((item: any, i: number) => (
                           <div key={i} className="flex justify-between py-2 border-b border-gray-100">
                             <span className="text-gray-600">{item.category}</span>
                             <span className="font-medium text-red-600">{formatCurrency(item.amount)}</span>
@@ -473,12 +478,12 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Category Breakdown Specific Chart */}
-                  {selectedReport === 'category-breakdown' && reportData.expenses.length > 0 && (
+                  {selectedReport === 'category-breakdown' && (reportData.expenses || []).length > 0 && (
                     <div>
                       <h4 className="font-semibold text-gray-700 mb-3">Expense Distribution</h4>
                       <div className="space-y-2">
-                        {reportData.expenses.map((item: any, i: number) => {
-                          const percentage = (item.amount / reportData.summary.total_expenses) * 100;
+                        {(reportData.expenses || []).map((item: any, i: number) => {
+                          const percentage = (item.amount / (reportData.summary?.total_expenses || 1)) * 100;
                           return (
                             <div key={i}>
                               <div className="flex justify-between text-sm mb-1">
@@ -514,7 +519,7 @@ export default function ReportsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {reportData.months.map((month: any) => (
+                        {(reportData.months || []).map((month: any) => (
                           <tr key={month.month}>
                             <td>{month.month}</td>
                             <td className="text-right text-green-600">{formatCurrency(month.income)}</td>
@@ -530,12 +535,12 @@ export default function ReportsPage() {
                       <tfoot className="bg-gray-50">
                         <tr className="font-bold">
                           <td>TOTAL</td>
-                          <td className="text-right text-green-600">{formatCurrency(reportData.totals.income)}</td>
-                          <td className="text-right text-red-600">{formatCurrency(reportData.totals.expenses)}</td>
+                          <td className="text-right text-green-600">{formatCurrency(reportData.totals?.income ?? 0)}</td>
+                          <td className="text-right text-red-600">{formatCurrency(reportData.totals?.expenses ?? 0)}</td>
                           <td className={`text-right ${
-                            reportData.totals.net >= 0 ? 'text-blue-600' : 'text-orange-600'
+                            (reportData.totals?.net ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'
                           }`}>
-                            {formatCurrency(reportData.totals.net)}
+                            {formatCurrency(reportData.totals?.net ?? 0)}
                           </td>
                         </tr>
                       </tfoot>
