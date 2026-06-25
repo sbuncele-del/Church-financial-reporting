@@ -26,7 +26,7 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
   );
 }
 
-function ReadOnlySummary({ churchId, summary }: { churchId: number; summary: any }) {
+function ReadOnlySummary({ summary }: { churchId: number; summary: any }) {
   const net_mtd = (summary?.income_mtd ?? 0) - (summary?.expenses_mtd ?? 0);
   const net_ytd = (summary?.income_ytd ?? 0) - (summary?.expenses_ytd ?? 0);
 
