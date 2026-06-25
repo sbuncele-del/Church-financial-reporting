@@ -249,9 +249,20 @@ def init_db():
                 amount DECIMAL(12,2) NOT NULL,
                 description TEXT,
                 date DATE NOT NULL,
+                payment_method VARCHAR(50) DEFAULT 'cash',
+                member_id INTEGER,
+                is_anonymous BOOLEAN DEFAULT FALSE,
+                reference_number VARCHAR(100),
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        for col, coltype in [
+            ('payment_method', "VARCHAR(50) DEFAULT 'cash'"),
+            ('member_id', 'INTEGER'),
+            ('is_anonymous', 'BOOLEAN DEFAULT FALSE'),
+            ('reference_number', 'VARCHAR(100)'),
+        ]:
+            cur.execute(f"ALTER TABLE income_entries ADD COLUMN IF NOT EXISTS {col} {coltype}")
         
         # Expense entries table
         cur.execute("""
@@ -262,10 +273,25 @@ def init_db():
                 amount DECIMAL(12,2) NOT NULL,
                 description TEXT,
                 date DATE NOT NULL,
+                payment_method VARCHAR(50) DEFAULT 'check',
+                payee_name VARCHAR(255),
+                payee_type VARCHAR(100),
+                reference_number VARCHAR(100),
+                invoice_number VARCHAR(100),
                 vendor VARCHAR(255),
+                is_approved BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        for col, coltype in [
+            ('payment_method', "VARCHAR(50) DEFAULT 'check'"),
+            ('payee_name', 'VARCHAR(255)'),
+            ('payee_type', 'VARCHAR(100)'),
+            ('reference_number', 'VARCHAR(100)'),
+            ('invoice_number', 'VARCHAR(100)'),
+            ('is_approved', 'BOOLEAN DEFAULT FALSE'),
+        ]:
+            cur.execute(f"ALTER TABLE expense_entries ADD COLUMN IF NOT EXISTS {col} {coltype}")
         
         # Budgets table
         cur.execute("""
@@ -1650,12 +1676,16 @@ class handler(BaseHTTPRequestHandler):
                     return
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
-                
+                payment_method = data.get('payment_method', 'cash')
+                member_id = data.get('member_id') or None
+                is_anonymous = bool(data.get('is_anonymous', False))
+                reference_number = data.get('reference_number', '') or None
+
                 cur.execute("""
-                    INSERT INTO income_entries (church_id, category_id, amount, description, date)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO income_entries (church_id, category_id, amount, description, date, payment_method, member_id, is_anonymous, reference_number)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
-                """, (church_id, category_id, amount, description, date))
+                """, (church_id, category_id, amount, description, date, payment_method, member_id, is_anonymous, reference_number))
                 entry = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(entry))
@@ -1689,19 +1719,24 @@ class handler(BaseHTTPRequestHandler):
                     return
                 description = data.get('description', '')
                 date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
-                
+                payment_method = data.get('payment_method', 'check')
+                payee_name = data.get('payee_name', '') or None
+                payee_type = data.get('payee_type', '') or None
+                reference_number = data.get('reference_number', '') or None
+                invoice_number = data.get('invoice_number', '') or None
+
                 # Auto-approve when admin or finance user records the expense
                 auth_user = self.get_auth_user()
                 auto_approve = auth_user and auth_user.get('role') in ('admin', 'finance')
                 cur.execute("""
-                    INSERT INTO expense_entries (church_id, category_id, amount, description, date, is_approved)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO expense_entries (church_id, category_id, amount, description, date, payment_method, payee_name, payee_type, reference_number, invoice_number, is_approved)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
-                """, (church_id, category_id, amount, description, date, auto_approve))
+                """, (church_id, category_id, amount, description, date, payment_method, payee_name, payee_type, reference_number, invoice_number, auto_approve))
                 entry = cur.fetchone()
                 conn.commit()
                 self.send_json(dict(entry))
-            
+
             # Seed comprehensive expense categories for a church
             elif path == '/api/v1/admin/seed-expense-categories':
                 # Require admin authentication
