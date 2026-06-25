@@ -9,9 +9,11 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   PrinterIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import { reportsService } from '../../services/financeService';
 import { formatCurrency } from '../../utils/currency';
+import { downloadReportPDF, downloadReportExcel } from '../../utils/reportExports';
 
 type ReportType = 'income-statement' | 'monthly-comparison' | 'weekly-report' | 'category-breakdown';
 
@@ -97,6 +99,32 @@ export default function ReportsPage() {
     window.print();
   };
 
+  const getPeriodLabel = () => {
+    if (selectedReport === 'monthly-comparison') return `Year ${year}`;
+    if (selectedReport === 'weekly-report') return `Week of ${selectedWeek}`;
+    return `${startDate} to ${endDate}`;
+  };
+
+  const handleExportPDF = async () => {
+    if (!reportData) return toast.error('Generate a report first');
+    try {
+      await downloadReportPDF(reportData, selectedReport, getPeriodLabel(), year);
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('Failed to generate PDF');
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (!reportData) return toast.error('Generate a report first');
+    try {
+      downloadReportExcel(reportData, selectedReport, getPeriodLabel(), year);
+      toast.success('Excel file downloaded');
+    } catch {
+      toast.error('Failed to generate Excel file');
+    }
+  };
+
   const exportToCSV = async () => {
     try {
       const blob = await reportsService.exportTransactions(startDate, endDate, 'all');
@@ -163,14 +191,22 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Financial Reports</h1>
           <p className="text-gray-600">Generate and export financial reports</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={printReport} className="btn-secondary flex items-center gap-2">
             <PrinterIcon className="w-5 h-5" />
             Print
           </button>
+          <button onClick={handleExportPDF} className="btn-secondary flex items-center gap-2">
+            <DocumentArrowDownIcon className="w-5 h-5" />
+            PDF
+          </button>
+          <button onClick={handleExportExcel} className="btn-secondary flex items-center gap-2">
+            <TableCellsIcon className="w-5 h-5" />
+            Excel
+          </button>
           <button onClick={exportToCSV} className="btn-secondary flex items-center gap-2">
             <DocumentArrowDownIcon className="w-5 h-5" />
-            Export CSV
+            CSV
           </button>
         </div>
       </div>
