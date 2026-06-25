@@ -5,7 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
 
-console.log('Church Management System loading...');
+console.log('Church Excellence loading...');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

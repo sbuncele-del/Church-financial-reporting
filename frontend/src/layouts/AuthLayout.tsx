@@ -11,8 +11,8 @@ export default function AuthLayout() {
               <path d="M12 2L2 8.5V11h2v9h6v-5h4v5h6v-9h2V8.5L12 2zm0 2.5l7 4.5v1H5v-1l7-4.5zM11 5v2h2V5h-2z"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">Church Management</h1>
-          <p className="text-primary-200 mt-1">Church management made simple</p>
+          <h1 className="text-2xl font-bold text-white">Church Excellence</h1>
+          <p className="text-primary-200 mt-1">Kingdom financial stewardship</p>
         </div>
         
         {/* Auth Card */}
@@ -22,7 +22,7 @@ export default function AuthLayout() {
         
         {/* Footer */}
         <p className="text-center text-primary-200 text-sm mt-6">
-          © 2024 Church Management System
+          © 2026 Church Excellence
         </p>
       </div>
     </div>

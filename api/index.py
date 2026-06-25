@@ -1456,7 +1456,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Login
             elif path == '/api/v1/auth/login':
-                email = data.get('email', '')
+                email = data.get('email', '').strip().lower()
                 password = data.get('password', '')
 
                 cur.execute("""
@@ -1464,11 +1464,11 @@ class handler(BaseHTTPRequestHandler):
                            u.role, u.church_id, u.is_active, c.name AS church_name
                     FROM users u
                     LEFT JOIN churches c ON c.id = u.church_id
-                    WHERE u.email = %s
+                    WHERE LOWER(u.email) = %s
                 """, (email,))
                 user = cur.fetchone()
 
-                if user and verify_password(password, user['password_hash']):
+                if user and user['is_active'] and verify_password(password, user['password_hash']):
                     token = secrets.token_hex(32)
                     refresh = secrets.token_hex(32)
                     cur.execute(
