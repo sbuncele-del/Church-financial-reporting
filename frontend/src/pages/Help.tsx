@@ -198,6 +198,28 @@ export default function Help() {
           <li>Use the <strong>Edit</strong> button to change someone's name, role, or activate/deactivate their account</li>
           <li>Use <strong>Reset Password</strong> to set a new password for a user who is locked out</li>
         </ul>
+
+        <div className="space-y-2 mt-3">
+          <p className="font-medium text-gray-900">How new users gain access (invitation process)</p>
+          <p>
+            Church Excellence does not send automatic invitation emails. When you add a user, you choose their
+            password and then <strong>manually share their credentials</strong> — via WhatsApp, SMS, or in person.
+          </p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>Click <strong>Add User</strong> and fill in their name, email, role, and a temporary password</li>
+            <li>Their account is created immediately</li>
+            <li>Copy the following and send it to them (e.g. via WhatsApp):</li>
+          </ol>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 font-mono leading-relaxed">
+            Hi [Name], you've been added to [Church Name] on Church Excellence.<br />
+            Log in at <span className="text-blue-600">churchexc.org</span><br />
+            Email: [their email]<br />
+            Password: [the password you set]<br />
+            Contact your admin to reset your password if needed.
+          </div>
+          <li className="list-none text-gray-600">4. They go to <strong>churchexc.org</strong>, click <strong>Login</strong>, and use those credentials</li>
+        </div>
+
         <Tip>Deactivate a user instead of deleting them — this preserves the audit trail of entries they recorded.</Tip>
       </Section>
 
